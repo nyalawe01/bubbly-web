@@ -1,0 +1,323 @@
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN TOKENS — mood-theme bundles (single source: shared/theme/themes.ts).
+   Per-theme CSS vars are injected on <html> at runtime + first paint from the
+   bundle; this :root is only the default-theme (focus) SSR/no-JS fallback.
+   ============================================================ */
+:root {
+  --background: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-hover: #F4F4F5;
+  --bg-sidebar: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-input: #F4F4F5;
+  --bg-hover: #F4F4F5;
+  --bg-active: #F3E8E2;
+  --foreground: #1A1A1A;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --border: #E6E6E6;
+  --border-strong: #E6E6E6;
+  --accent: #C15F3C;
+  --accent-hover: #D99A6C;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: #F3E8E2;
+  --accent-ink: #FFFFFF;
+  --btn-primary: #C15F3C;
+  --btn-primary-foreground: #FFFFFF;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --font-display: var(--font-serif);
+  --font-ai: var(--font-serif);
+  --font-body: var(--font-sans);
+  --display-weight: 500;
+  --display-tracking: -0.01em;
+  --motion-lift: 1;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --art-opacity: 0.06;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-body, var(--font-sans)), Arial, Helvetica, sans-serif;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* ============================================================
+   ACCESSIBILITY / INTERACTION BASICS
+   ============================================================ */
+*[role="button"], button, a, [onClick], .cursor-pointer {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* iOS notch / gesture-bar safe areas — matters once this is added to a
+   home screen or wrapped in a native shell (your mobile/ folder). */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
+.hide-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; }
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
+.notebook-scroll::-webkit-scrollbar { width: 3px; }
+.notebook-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 150, 0.2);
+  border-radius: 4px;
+}
+
+.panel-scroll::-webkit-scrollbar { width: 6px; }
+.panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.panel-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+/* ============================================================
+   ICON MOTION SYSTEM
+   Per user feedback: the hover "lift" (translateY + scale-up) was hated on
+   text buttons across the app, so .icon-motion no longer lifts on hover — it
+   now only does smooth color/background transitions plus a subtle press.
+   Genuine icon-only buttons that WANT a lift opt in with .icon-lift
+   (reintroduced via the theme's motion.intensity token in the motion phase).
+   ============================================================ */
+.icon-motion {
+  transition: background-color 150ms ease, color 150ms ease, transform 120ms ease, opacity 150ms ease;
+}
+.icon-motion:active {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+/* Calm nav/text rows — color/background only, never any transform lift. */
+.nav-row {
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+/* AI response prose — follows the user's interface font (--font-body, set by the
+   font preference). Because it's a CSS variable on <html>, switching the font
+   instantly re-renders EVERY message already on screen, not just new ones.
+   Roomy paragraph spacing so sections read as separated by whitespace. */
+.ai-prose {
+  font-family: var(--font-body, var(--font-sans), inherit);
+}
+.ai-prose p { margin-top: 0.85em; margin-bottom: 0.85em; }
+.ai-prose h1, .ai-prose h2, .ai-prose h3 { margin-top: 1.1em; margin-bottom: 0.4em; }
+
+/* Listing mechanism — every list level gets a distinct, correct marker so nested
+   structure reads clearly instead of collapsing into repeated dots. Ordered lists
+   step 1. -> a. -> i.; unordered lists disc -> circle -> square. Markers sit
+   outside the text block and items keep comfortable breathing room. */
+.ai-prose ol { list-style-type: decimal; padding-left: 1.5em; margin: 0.6em 0; }
+.ai-prose ol ol { list-style-type: lower-alpha; }
+.ai-prose ol ol ol { list-style-type: lower-roman; }
+.ai-prose ul { list-style-type: disc; padding-left: 1.4em; margin: 0.6em 0; }
+.ai-prose ul ul { list-style-type: circle; }
+.ai-prose ul ul ul { list-style-type: square; }
+.ai-prose li { margin: 0.28em 0; padding-left: 0.15em; }
+.ai-prose li::marker { color: inherit; font-weight: 600; }
+.ai-prose li > p { margin: 0.2em 0; }
+
+/* Opt-in lift for interactive icon buttons only (not text). Amount is scaled
+   by the active theme via --motion-lift (set per motion.intensity token). */
+.icon-lift {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 150ms ease, color 150ms ease;
+  will-change: transform;
+}
+.icon-lift:hover {
+  transform: translateY(calc(-1px * var(--motion-lift, 2))) scale(calc(1 + 0.03 * var(--motion-lift, 2)));
+}
+.icon-lift:active {
+  transform: translateY(0) scale(0.94);
+  transition-duration: 80ms;
+}
+
+/* ------------------------------------------------------------
+   THEME-CHANGE + STATE MOTION (intensity from the active theme)
+   Icon chips smoothly transition color/background on any theme change; on the
+   swap they also briefly "pop" — the pop's size scales with --motion-lift, so
+   calm themes barely move and lively themes bounce. The informative color
+   transition always stays, even under reduced motion.
+   ------------------------------------------------------------ */
+.theme-swap {
+  transition: background-color 300ms ease, color 300ms ease;
+}
+@keyframes chipPop {
+  0% { transform: scale(1) rotate(0deg); }
+  45% { transform: scale(calc(1 + 0.06 * var(--motion-lift, 2))) rotate(calc(2deg * var(--motion-lift, 2))); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.theme-swapping .theme-swap {
+  animation: chipPop 420ms var(--motion-ease, ease);
+}
+
+/* Generator/tool state classes: .loading spins, .done pops once. */
+@keyframes spin360 { to { transform: rotate(360deg); } }
+.loading { animation: spin360 900ms linear infinite; }
+@keyframes donePop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+.done { animation: donePop 360ms var(--motion-ease, ease); }
+
+/* Draw-on checkmark via stroke-dashoffset (for success states). */
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+.draw-check path { stroke-dasharray: 32; stroke-dashoffset: 32; animation: drawCheck 380ms ease forwards; }
+
+/* Gentle idle float for hero art / focal elements. */
+@keyframes floatY { 0%,100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
+.float-idle { animation: floatY 3s ease-in-out infinite; }
+
+/* Reduced motion — keep only the informative color transition. */
+@media (prefers-reduced-motion: reduce) {
+  .icon-motion, .icon-motion:active,
+  .icon-lift, .icon-lift:hover, .icon-lift:active {
+    transition: background-color 150ms ease, color 150ms ease;
+    transform: none;
+  }
+  .theme-swapping .theme-swap,
+  .loading, .done, .draw-check path, .float-idle {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   FLUID SIZING HELPER
+   Fixes the "logo/video isn't well sized" issue: the old markup
+   jumped between exactly two fixed sizes (w-32 -> md:w-40), so
+   anything between phone and desktop (iPad, small laptops) got
+   whichever size was "closest" rather than something tailored.
+   clamp() scales continuously with viewport width instead.
+   ============================================================ */
+.fluid-hero-media {
+  width: clamp(6rem, 16vw, 10rem);
+  height: clamp(6rem, 16vw, 10rem);
+}
+
+/* ============================================================
+   EXISTING ANIMATIONS (kept as-is — these were fine)
+   ============================================================ */
+@keyframes thinkingRotate {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.thinking-dots { animation: thinkingRotate 1.5s ease-in-out infinite; }
+
+/* Thinking indicator — a single invisible circle with three solid dots spaced
+   evenly (120° apart) around its rim, all revolving together. The circle itself is
+   transparent: only the three dots are visible, orbiting a shared centre. Each dot
+   is pinned to the top and rotated about the circle's centre (origin 2.5px 13px =
+   half the 26px box); spinning the container carries all three around. */
+.think-orbit {
+  position: relative;
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  animation: thinkOrbit 1.1s linear infinite;
+}
+.think-orbit span {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 9999px;
+  background: rgb(113, 113, 122);
+  transform-origin: 2.5px 13px;
+}
+.think-orbit span:nth-child(2) { transform: rotate(120deg); }
+.think-orbit span:nth-child(3) { transform: rotate(240deg); }
+@keyframes thinkOrbit { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .think-orbit { animation-duration: 2.2s; }
+}
+
+@media (min-width: 768px) {
+  @keyframes glowLeft { 0% { left: -100%; } 100% { left: 100%; } }
+  @keyframes glowRight { 0% { right: -100%; } 100% { right: 100%; } }
+  .glow-line-left { animation: glowLeft 3s linear infinite; }
+  .glow-line-right { animation: glowRight 3s linear infinite; }
+}
+
+@keyframes blobFloat {
+  0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+  33% { transform: translate(30px, -50px) scale(1.1) rotate(120deg); }
+  66% { transform: translate(-20px, 20px) scale(0.9) rotate(240deg); }
+  100% { transform: translate(0px, 0px) scale(1) rotate(360deg); }
+}
+.blob-animation { animation: blobFloat 40s ease-in-out infinite; }
+.blob-animation-2 { animation: blobFloat 50s ease-in-out infinite reverse; }
+.blob-animation-3 { animation: blobFloat 60s ease-in-out infinite 5s; }
+
+@media (max-width: 768px) {
+  .blob-animation, .blob-animation-2, .blob-animation-3 {
+    animation-duration: 60s, 70s, 80s;
+  }
+}
+
+@media (max-width: 480px) {
+  .prose { font-size: 1rem !important; }
+  .prose h1 { font-size: 1.5rem !important; }
+  .prose h2 { font-size: 1.25rem !important; }
+  .prose h3 { font-size: 1.1rem !important; }
+}
+
+.video-transition { transition: opacity 0.5s ease-in-out; }
+.video-transition-enter { opacity: 0; }
+.video-transition-active { opacity: 1; }
+
+.diagram-container { background: transparent; border-radius: 12px; overflow: hidden; }
+.diagram-container svg { width: 100%; height: auto; max-height: 500px; }
+
+.mermaid-container { background: transparent; border-radius: 12px; overflow: hidden; padding: 16px; }
+.mermaid-container svg { width: 100%; height: auto; max-height: 600px; }
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.recording-pulse { animation: pulse-ring 1.5s infinite; }
+
+/* ============================================================
+   NEW: SOURCES PANEL / DRAWER
+   ============================================================ */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.drawer-panel { animation: slideInRight 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+.drawer-backdrop { animation: fadeInBackdrop 200ms ease-out; }
+
+/* Source chip row — horizontal scroll on mobile, no visible scrollbar */
+.source-chip-row {
+  scroll-snap-type: x proximity;
+}
+.source-chip {
+  scroll-snap-align: start;
+}

@@ -1,0 +1,250 @@
+"use client";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, Check, X, RotateCcw, Trophy } from "lucide-react";
+import { Breadcrumb } from "./Breadcrumb";
+import { QuestionChat, type QMsg } from "./QuestionChat";
+
+// content: { title, questions: [{ q, options[4], correctIndex, explanation }] }
+// state:   { phase, currentIndex, answers:{idx:optIdx}, score:{obtained,total}, qchats:{idx:QMsg[]} }
+interface QuizRunnerProps {
+  content: any;
+  state: any;
+  onState: (next: any) => void;
+}
+
+export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
+  const questions: any[] = content?.questions || [];
+  const phase: string = state?.phase || "not_started";
+  const answers: Record<string, number> = state?.answers || {};
+  const qchats: Record<string, QMsg[]> = state?.qchats || {};
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewIdx, setReviewIdx] = useState(0);
+
+  const patch = (p: any) => onState({ ...state, ...p });
+
+  // ---- not started ----
+  if (phase === "not_started") {
+    return (
+      <Centered>
+        <h1 className="text-2xl md:text-3xl font-semibold text-[var(--text-primary)] mb-2">{content?.title || "Quiz"}</h1>
+        <p className="text-[var(--text-secondary)] mb-6">{questions.length} questions · answer them one at a time</p>
+        <button
+          onClick={() => patch({ phase: "in_progress", currentIndex: 0, answers: {} })}
+          className="px-6 py-2.5 rounded-xl bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)] font-medium"
+        >
+          Start quiz
+        </button>
+      </Centered>
+    );
+  }
+
+  // ---- submitted: summary or review ----
+  if (phase === "submitted") {
+    const score = state.score || { obtained: 0, total: questions.length };
+    const pct = score.total ? Math.round((score.obtained / score.total) * 100) : 0;
+
+    if (!reviewing) {
+      return (
+        <Centered>
+          <Trophy size={40} className="text-[var(--accent)] mb-3" />
+          <div className="text-4xl font-bold text-[var(--text-primary)]">
+            {score.obtained} / {score.total}
+          </div>
+          <p className="text-[var(--text-secondary)] mt-1 mb-6">{pct}% · {content?.title || "Quiz"}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setReviewIdx(0); setReviewing(true); }}
+              className="px-5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium"
+            >
+              Review answers
+            </button>
+            <button
+              onClick={() => patch({ phase: "not_started", answers: {}, currentIndex: 0, score: null })}
+              className="px-5 py-2.5 rounded-xl bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)] font-medium flex items-center gap-2"
+            >
+              <RotateCcw size={15} /> Retake
+            </button>
+          </div>
+        </Centered>
+      );
+    }
+
+    // review mode — go through every question with correct answer + per-question chat
+    const q = questions[reviewIdx];
+    const chosen = answers[reviewIdx];
+    return (
+      <Runner>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => setReviewing(false)} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">← Back to results</button>
+          <span className="text-xs text-[var(--text-secondary)]">Reviewing {reviewIdx + 1} / {questions.length}</span>
+        </div>
+        <QuestionReview q={q} chosen={chosen} />
+        <QuestionChat
+          ctx={{
+            question: q.q,
+            options: q.options,
+            correctAnswer: q.options?.[q.correctIndex],
+            studentAnswer: chosen != null ? q.options?.[chosen] : "(not answered)",
+            explanation: q.explanation,
+          }}
+          thread={qchats[reviewIdx] || []}
+          onUpdate={(t) => patch({ qchats: { ...qchats, [reviewIdx]: t } })}
+        />
+        <div className="flex items-center justify-between mt-5">
+          <button disabled={reviewIdx === 0} onClick={() => setReviewIdx((i) => i - 1)} className="text-sm flex items-center gap-1 text-[var(--text-secondary)] disabled:opacity-30">
+            <ArrowLeft size={15} /> Prev
+          </button>
+          <button disabled={reviewIdx === questions.length - 1} onClick={() => setReviewIdx((i) => i + 1)} className="text-sm flex items-center gap-1 text-[var(--text-secondary)] disabled:opacity-30">
+            Next <ArrowRight size={15} />
+          </button>
+        </div>
+      </Runner>
+    );
+  }
+
+  // ---- in progress (taking) ----
+  const idx = state.currentIndex ?? 0;
+  const q = questions[idx];
+  const answered = (i: number) => answers[i] != null;
+  const isLast = idx === questions.length - 1;
+
+  const submit = () => {
+    let obtained = 0;
+    questions.forEach((qq, i) => {
+      if (answers[i] === qq.correctIndex) obtained += 1;
+    });
+    setConfirmOpen(false);
+    setReviewing(false);
+    patch({ phase: "submitted", score: { obtained, total: questions.length } });
+  };
+
+  return (
+    <Runner>
+      <Breadcrumb total={questions.length} current={idx} isAnswered={answered} onJump={(i) => patch({ currentIndex: i })} />
+      <div className="text-xs text-[var(--text-secondary)] mb-2">Question {idx + 1} of {questions.length}</div>
+      <p className="text-lg md:text-xl font-medium text-[var(--text-primary)] mb-5">{q?.q}</p>
+      <div className="space-y-2.5">
+        {(q?.options || []).map((opt: string, oi: number) => {
+          const selected = answers[idx] === oi;
+          return (
+            <button
+              key={oi}
+              onClick={() => patch({ answers: { ...answers, [idx]: oi } })}
+              className={`w-full flex items-center gap-3 text-left rounded-xl border px-4 py-3 transition-all ${
+                selected ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-[var(--bg-input)] hover:bg-[var(--bg-hover)]"
+              }`}
+            >
+              <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-semibold flex-shrink-0 ${selected ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}>
+                {String.fromCharCode(65 + oi)}
+              </span>
+              <span className="text-sm text-[var(--text-primary)]">{opt}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between mt-6">
+        <button
+          disabled={idx === 0}
+          onClick={() => patch({ currentIndex: idx - 1 })}
+          className="text-sm flex items-center gap-1 text-[var(--text-secondary)] disabled:opacity-30"
+        >
+          <ArrowLeft size={15} /> Back
+        </button>
+        {isLast ? (
+          <button
+            disabled={!answered(idx)}
+            onClick={() => setConfirmOpen(true)}
+            className="px-5 py-2 rounded-xl bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)] font-medium disabled:opacity-40"
+          >
+            Submit
+          </button>
+        ) : (
+          <button
+            disabled={!answered(idx)}
+            onClick={() => patch({ currentIndex: idx + 1 })}
+            className="px-5 py-2 rounded-xl bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)] font-medium flex items-center gap-1.5 disabled:opacity-40"
+          >
+            Next <ArrowRight size={15} />
+          </button>
+        )}
+      </div>
+
+      {confirmOpen && (
+        <ConfirmSubmit
+          answeredCount={Object.keys(answers).length}
+          total={questions.length}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={submit}
+        />
+      )}
+    </Runner>
+  );
+}
+
+function QuestionReview({ q, chosen }: { q: any; chosen: number | undefined }) {
+  return (
+    <div>
+      <p className="text-lg font-medium text-[var(--text-primary)] mb-4">{q.q}</p>
+      <div className="space-y-2">
+        {(q.options || []).map((opt: string, oi: number) => {
+          const isCorrect = oi === q.correctIndex;
+          const isChosen = oi === chosen;
+          return (
+            <div
+              key={oi}
+              className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm ${
+                isCorrect
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : isChosen
+                  ? "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-300"
+                  : "border-[var(--border)] text-[var(--text-secondary)]"
+              }`}
+            >
+              <span className="w-5 font-semibold">{String.fromCharCode(65 + oi)}</span>
+              <span className="flex-1">{opt}</span>
+              {isCorrect && <Check size={16} />}
+              {isChosen && !isCorrect && <X size={16} />}
+            </div>
+          );
+        })}
+      </div>
+      {chosen == null && <p className="text-xs text-red-500 mt-2">You didn't answer this one.</p>}
+      {q.explanation && (
+        <div className="mt-3 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)]">
+          {q.explanation}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfirmSubmit({ answeredCount, total, onCancel, onConfirm }: { answeredCount: number; total: number; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-[var(--text-primary)]">Submit quiz?</h3>
+        <p className="text-sm text-[var(--text-secondary)] mt-1.5">
+          You've answered {answeredCount} of {total}. Once you submit you'll see your marks and can review the answers.
+        </p>
+        <div className="flex items-center justify-end gap-2 mt-5">
+          <button onClick={onCancel} className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">
+            Keep answering
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)]">
+            Yes, submit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="flex-1 flex flex-col items-center justify-center text-center p-6">{children}</div>;
+}
+function Runner({ children }: { children: React.ReactNode }) {
+  return <div className="flex-1 overflow-y-auto hide-scrollbar p-5 md:p-8"><div className="max-w-2xl mx-auto w-full">{children}</div></div>;
+}

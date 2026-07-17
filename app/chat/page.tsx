@@ -1,0 +1,1251 @@
+"use client";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { createBrowserClient } from '@supabase/ssr';
+import Head from "next/head";
+import { 
+  Loader2, 
+  AlertCircle, 
+  User, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff,
+  Menu,
+  Search
+} from "lucide-react";
+import { Sidebar } from "@/components/sidebar/Sidebar";
+import { ChatView } from "@/components/chat/ChatView";
+import { SettingsModal } from "@/components/modals/SettingsModal";
+import { SearchModal } from "@/components/modals/SearchModal";
+import { QuizModal } from "@/components/modals/QuizModal";
+import { FlashcardModal } from "@/components/modals/FlashcardModal";
+import { SlidesModal } from "@/components/modals/SlidesModal";
+import { SummaryModal } from "@/components/modals/SummaryModal";
+import { ExamModal } from "@/components/modals/ExamModal";
+import { SourcesModal } from "@/components/modals/SourcesModal";
+import { FilePreviewModal } from "@/components/modals/FilePreviewModal";
+import { AssetViewer } from "@/components/modals/AssetViewer";
+import { SourceViewerModal } from "@/components/modals/SourceViewerModal";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { Logo } from "@/components/ui/Logo";
+import { uploadFilesToVault } from "@/lib/api/vaultUpload";
+import { AssetPage } from "@/components/asset/AssetPage";
+
+// CSS Styles
+const customStyles = `
+  @keyframes thinkingRotate {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  .thinking-dots { animation: thinkingRotate 1.5s ease-in-out infinite; }
+
+  @keyframes glowLeft {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  @keyframes glowRight {
+    0% { right: -100%; }
+    100% { right: 100%; }
+  }
+  .glow-line-left { animation: glowLeft 3s linear infinite; }
+  .glow-line-right { animation: glowRight 3s linear infinite; }
+
+  @keyframes blobFloat {
+    0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+    33% { transform: translate(30px, -50px) scale(1.1) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) scale(0.9) rotate(240deg); }
+    100% { transform: translate(0px, 0px) scale(1) rotate(360deg); }
+  }
+  .blob-animation { animation: blobFloat 40s ease-in-out infinite; }
+  .blob-animation-2 { animation: blobFloat 50s ease-in-out infinite reverse; }
+  .blob-animation-3 { animation: blobFloat 60s ease-in-out infinite 5s; }
+
+  .hide-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; }
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .notebook-scroll::-webkit-scrollbar { width: 3px; }
+  .notebook-scroll::-webkit-scrollbar-thumb { background-color: rgba(150, 150, 150, 0.2); border-radius: 4px; }
+  .perspective-1000 { perspective: 1000px; }
+  .transform-style-3d { transform-style: preserve-3d; }
+  .backface-hidden { backface-visibility: hidden; }
+  .rotate-y-180 { transform: rotateY(180deg); }
+  .video-transition { transition: opacity 0.5s ease-in-out; }
+  *[role="button"], button, a, [onClick] { cursor: pointer; }
+  @keyframes pulse-ring {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  .recording-pulse { animation: pulse-ring 1.5s infinite; }
+`;
+
+export default function Workspace() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // ============================================
+  // STATE
+  // ============================================
+  const { theme, colors } = useTheme();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [activeView, setActiveView] = useState("chat");
+  const [currentTabTitle, setCurrentTabTitle] = useState("New Chat");
+
+  // Modal States
+  const [activeModal, setActiveModal] = useState<
+    "settings" | "quiz" | "flashcards" | "slides" | "summary" | "exam" | "sources" | "filePreview" | "assetViewer" | "sourceViewer" | "search" | "generating" | null
+  >(null);
+  const [settingsTab, setSettingsTab] = useState<"general" | "profile" | "data" | "about">("general");
+  const [modalData, setModalData] = useState<any>(null);
+
+  // Auth
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [showAuthScreen, setShowAuthScreen] = useState(true);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [user, setUser] = useState({ name: "Loading...", email: "", avatar_url: "", accessToken: "", id: "" });
+
+  // Chat
+  const [messages, setMessages] = useState<any[]>([]);
+  const [inputText, setInputText] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [savedChats, setSavedChats] = useState<any[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<"instant" | "expert" | "vision">("instant");
+  const [showModelPills, setShowModelPills] = useState(true);
+  // MENTOR MODE question form: the AI can raise a [QUESTIONS] block; we pop it up as a
+  // modal, and track which question-messages have already been answered (by message id)
+  // so the "answer" affordance survives the message-list rebuilds during streaming.
+  const [questionsModal, setQuestionsModal] = useState<{ id: string; intro?: string; questions: any[] } | null>(null);
+  const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, boolean>>({});
+  // Generated Notebook assets live in Supabase now (background generation, durable
+  // quiz progress/scores + per-question chats). activeAssetId opens one as a page.
+  const [notebookAssets, setNotebookAssets] = useState<any[]>([]);
+  const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
+
+  // Vault
+  const [vaultDocuments, setVaultDocuments] = useState<any[]>([]);
+  const [vaultCategories, setVaultCategories] = useState<Record<string, any[]>>({ "Uncategorized": [] });
+
+  // Audio
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Refs
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const uploadPopupRef = useRef<HTMLDivElement>(null);
+  const vaultUploadRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // ============================================
+  // THEME (see components/theme/ThemeProvider.tsx — theme/colors sourced above)
+  // ============================================
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setSidebarOpen(false);
+      else setSidebarOpen(true);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Only two logo/video asset variants exist (dark vs. light-surfaced); every
+  // non-dark theme (white/pink/blue/green/grey) is light-surfaced, so they all
+  // share the light asset.
+  const logoSrc = theme === "dark" ? "/logo.png" : "/logo2.png";
+  const videoSrc = theme === "dark" ? "/onboarding.mp4" : "/onboarding2.mp4";
+
+  // ============================================
+  // SAVED CHATS
+  // ============================================
+  useEffect(() => {
+    const storedChats = localStorage.getItem('bubbly_vault_conversations') || localStorage.getItem('studix_vault_conversations');
+    if (storedChats) {
+      try {
+        const parsed = JSON.parse(storedChats);
+        setSavedChats(parsed);
+      } catch (e) {
+        console.error("Failed to parse stored chats:", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (savedChats.length > 0) {
+      localStorage.setItem('bubbly_vault_conversations', JSON.stringify(savedChats));
+      localStorage.removeItem('studix_vault_conversations');
+    }
+  }, [savedChats]);
+
+  useEffect(() => {
+    if (messages.length === 0 && !currentChatId) {
+      setShowModelPills(true);
+    } else {
+      setShowModelPills(false);
+    }
+  }, [messages, currentChatId]);
+
+  // ============================================
+  // NOTEBOOK ASSETS
+  // ============================================
+  const standardChats = savedChats.filter(c => !c.isNotebookAsset);
+
+  const categorizedChats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterday = today - 86400000;
+    const weekAgo = today - 7 * 86400000;
+    // Pinned first (its own bucket, object key order = render order), then the
+    // usual date buckets for everything else.
+    const cats: Record<string, any[]> = { Pinned: [], Today: [], Yesterday: [], "Previous 7 Days": [], Older: [] };
+
+    standardChats.forEach(chat => {
+      if (chat.pinned) { cats.Pinned.push(chat); return; }
+      const chatTime = chat.timestamp || new Date(chat.date).getTime() || Date.now();
+      if (chatTime >= today) cats.Today.push(chat);
+      else if (chatTime >= yesterday) cats.Yesterday.push(chat);
+      else if (chatTime >= weekAgo) cats["Previous 7 Days"].push(chat);
+      else cats.Older.push(chat);
+    });
+    return cats;
+  }, [standardChats]);
+
+  // ============================================
+  // AUTH FUNCTIONS
+  // ============================================
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault(); setAuthError(""); setIsAuthLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+      if (error) throw error;
+      if (data.user) {
+        setUser(prev => ({ ...prev, id: data.user.id, email: data.user.email || "" }));
+      }
+      setAuthEmail(""); setAuthPassword("");
+    } catch (error: any) { setAuthError(error.message); } finally { setIsAuthLoading(false); }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault(); setAuthError(""); setIsAuthLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail, password: authPassword, options: { data: { full_name: authName, name: authName } }
+      });
+      if (error) throw error;
+      if (data?.user) {
+        setUser(prev => ({ ...prev, id: data.user?.id || "", email: authEmail }));
+      }
+      if (data?.user && data.session) { setAuthName(""); setAuthEmail(""); setAuthPassword(""); } 
+    } catch (error: any) { setAuthError(error.message); } finally { setIsAuthLoading(false); }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(""); setIsAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'email profile https://www.googleapis.com/auth/drive.readonly',
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        },
+      });
+      if (error) throw error;
+    } catch (error: any) { setAuthError(error.message); setIsAuthLoading(false); }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setShowAuthScreen(true); setIsAuthenticated(false);
+    window.location.href = '/';
+  };
+
+  const deleteAccount = async () => {
+    if (!confirm("Are you sure you want to delete your account? This action is IRREVERSIBLE and all your data will be permanently deleted.")) return;
+    if (!confirm("Please confirm again: This will delete all your chats, files, and personal data.")) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete account');
+
+      localStorage.removeItem('bubbly_vault_conversations');
+      localStorage.removeItem('studix_vault_conversations');
+      localStorage.removeItem('studix_theme');
+
+      alert("Account successfully deleted.");
+      handleSignOut();
+    } catch (error: any) {
+      alert("Failed to delete account: " + error.message);
+    }
+  };
+
+  const deleteAllData = async () => {
+    if (!confirm("Are you sure you want to delete ALL your data? This includes all chats, files, and documents. This action is IRREVERSIBLE.")) return;
+    
+    try {
+      await supabase.from('vault_documents').delete().eq('user_id', user.id);
+      await supabase.from('vault_embeddings').delete().eq('user_id', user.id);
+
+      localStorage.removeItem('bubbly_vault_conversations');
+      localStorage.removeItem('studix_vault_conversations');
+
+      setSavedChats([]);
+      setVaultDocuments([]);
+      setMessages([]);
+      setCurrentChatId(null);
+      
+      alert("All data successfully deleted.");
+    } catch (error: any) {
+      alert("Failed to delete data: " + error.message);
+    }
+  };
+
+  const updateUserFromSession = (session: any) => {
+    if (!session?.user) return;
+    const userData = session.user;
+    const metadata = userData.user_metadata || {};
+    const identities = userData.identities || [];
+    
+    let displayName = metadata.full_name || metadata.name || (metadata.first_name ? `${metadata.first_name} ${metadata.last_name || ''}`.trim() : userData.email?.split('@')[0]) || "User";
+    let avatarUrl = metadata.avatar_url || metadata.picture || metadata.photo_url || "";
+    if (!avatarUrl && identities.length > 0) {
+      const googleIdentity = identities.find((id: any) => id.provider === 'google');
+      if (googleIdentity?.identity_data?.avatar_url) avatarUrl = googleIdentity.identity_data.avatar_url;
+    }
+    setUser({ 
+      name: displayName, 
+      email: userData.email || "", 
+      avatar_url: avatarUrl || "", 
+      accessToken: session.provider_token || "", 
+      id: userData.id || ""
+    });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if (session?.user) { 
+        setIsAuthenticated(true); 
+        setShowAuthScreen(false); 
+        setIsLoadingAuth(false);
+        updateUserFromSession(session);
+      } 
+      else if (event === 'SIGNED_OUT') { setIsAuthenticated(false); setShowAuthScreen(true); setIsLoadingAuth(false); }
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      if (session?.user) { 
+        setIsAuthenticated(true); 
+        setShowAuthScreen(false); 
+        setIsLoadingAuth(false); 
+        updateUserFromSession(session);
+        loadUserData(session.user.id);
+      }
+      else { setIsAuthenticated(false); setShowAuthScreen(true); setIsLoadingAuth(false); }
+    });
+    return () => { isMounted = false; subscription.unsubscribe(); };
+  }, [supabase]);
+
+  const loadUserData = async (userId: string) => {
+    const storedChats = localStorage.getItem('bubbly_vault_conversations') || localStorage.getItem('studix_vault_conversations');
+    if (storedChats) {
+      try {
+        const parsed = JSON.parse(storedChats);
+        setSavedChats(parsed);
+      } catch (e) {
+        console.error("Failed to parse stored chats:", e);
+      }
+    }
+
+    const { data } = await supabase.from('vault_documents').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    if (data) {
+      setVaultDocuments(data.map(d => ({
+        id: d.id,
+        name: d.file_name,
+        size: d.file_size,
+        type: d.file_type,
+        date: new Date(d.created_at).toLocaleDateString(),
+        aiSummary: d.ai_summary
+      })));
+    }
+
+    const { data: assets } = await supabase
+      .from('notebook_assets')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (assets) setNotebookAssets(assets);
+  };
+
+  // Live-sync notebook assets so a generating asset flips to ready (or failed)
+  // without a refresh, and edits from another tab appear here too.
+  useEffect(() => {
+    if (!user.id) return;
+    const channel = supabase
+      .channel(`notebook_assets_${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notebook_assets", filter: `user_id=eq.${user.id}` },
+        (payload: any) => {
+          setNotebookAssets((prev) => {
+            if (payload.eventType === "DELETE") return prev.filter((a) => a.id !== payload.old.id);
+            const row = payload.new;
+            return prev.some((a) => a.id === row.id) ? prev.map((a) => (a.id === row.id ? row : a)) : [row, ...prev];
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user.id, supabase]);
+
+  // ============================================
+  // GOOGLE DRIVE FUNCTIONS
+  // ============================================
+  const launchGoogleDrivePicker = async () => {
+    if (!user.accessToken) {
+      // No Google Drive session yet (e.g. signed up with email/password, or before
+      // Drive was added) — take them to grant access, then they can pick files.
+      alert("Connect your Google Drive to attach files from it. You'll be sent to grant access.");
+      await handleGoogleSignIn();
+      return;
+    }
+
+    try {
+      if (typeof window !== 'undefined' && !(window as any).google) {
+        const script = document.createElement('script');
+        script.src = "https://apis.google.com/js/api.js";
+        script.onload = () => (window as any).gapi.load('picker', () => {});
+        document.body.appendChild(script);
+        return;
+      }
+
+      if (!(window as any).google?.picker) {
+        alert("Google API is still loading...");
+        return;
+      }
+
+      const picker = new (window as any).google.picker.PickerBuilder()
+        .addView((window as any).google.picker.ViewId.DOCS)
+        .setOAuthToken(user.accessToken)
+        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
+        .setCallback((data: any) => {
+          if (data.action === (window as any).google.picker.Action.PICKED) {
+            const file = data.docs[0];
+            handleGoogleDriveFile(file);
+          }
+        })
+        .build();
+      picker.setVisible(true);
+    } catch (error) {
+      console.error('Google Drive picker error:', error);
+      alert('Failed to open Google Drive. Please try again.');
+    }
+  };
+
+  const handleGoogleDriveFile = async (file: any) => {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${user.accessToken}` } }
+      );
+
+      // Token doesn't have Drive access (e.g. an account made before Drive was
+      // added, or a session without the Drive scope) — take them to grant it.
+      if (response.status === 401 || response.status === 403) {
+        alert("bubbly needs permission to read your Google Drive. You'll be sent to grant access.");
+        await handleGoogleSignIn();
+        return;
+      }
+      if (!response.ok) throw new Error(`Drive download failed (${response.status})`);
+
+      const blob = await response.blob();
+      const driveFile = new File([blob], file.name, { type: blob.type });
+      setAttachedFiles(prev => [...prev, driveFile]);
+    } catch (error) {
+      console.error('Failed to download Google Drive file:', error);
+      alert('Failed to download file from Google Drive.');
+    }
+  };
+
+  // ============================================
+  // CHAT FUNCTIONS
+  // ============================================
+  const startNewChat = () => {
+    setActiveView("chat");
+    setActiveAssetId(null);
+    setMessages([]);
+    setCurrentChatId(null);
+    setAttachedFiles([]);
+    setShowModelPills(true);
+    if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+  };
+
+  const loadChat = (item: any) => {
+    if (item.isNotebookAsset) {
+      // Legacy localStorage notebook entries (pre-Supabase) — ignore; new assets
+      // open as pages from the Notebooks list.
+      return;
+    }
+    setActiveView("chat");
+    setActiveAssetId(null);
+    const chat = savedChats.find(c => c.id === item.id || c.id === item);
+    if (chat) {
+      setMessages(chat.history || []);
+      setCurrentChatId(chat.id);
+      setShowModelPills(false);
+      if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+    }
+  };
+
+  // Row-menu actions for chat history (Recents) — persisted the same way as
+  // everything else in savedChats: the existing effect writes it to localStorage
+  // whenever the array changes.
+  const toggleChatPin = (chatId: string) => {
+    setSavedChats(prev => prev.map(c => (c.id === chatId ? { ...c, pinned: !c.pinned } : c)));
+  };
+
+  const renameChat = (chatId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    setSavedChats(prev => prev.map(c => (c.id === chatId ? { ...c, title: trimmed } : c)));
+  };
+
+  const deleteChat = (chatId: string) => {
+    setSavedChats(prev => {
+      const updated = prev.filter(c => c.id !== chatId);
+      localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
+      return updated;
+    });
+    if (currentChatId === chatId) startNewChat();
+  };
+
+  const shareChat = (chat: any) => {
+    const text = (chat.history || [])
+      .map((m: any) => `${m.role === "user" ? "You" : "bubbly"}: ${m.text}`)
+      .join("\n\n");
+    if (navigator.share) {
+      navigator.share({ title: chat.title || "bubbly chat", text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => alert("Conversation copied to clipboard!"));
+    }
+  };
+
+  const handleModelSelect = (model: "instant" | "expert" | "vision") => {
+    setSelectedModel(model);
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent, historicalPrompt?: string, historyOverride?: any[]) => {
+    e?.preventDefault();
+    const activeText = historicalPrompt || inputText;
+    if ((!activeText.trim() && attachedFiles.length === 0) || isGenerating) return;
+
+    let payloadString = activeText.trim();
+    const currentFiles = [...attachedFiles];
+    if (currentFiles.length > 0) {
+      payloadString = `[Attached Files: ${currentFiles.map(f => f.name).join(", ")}]\n\n${payloadString}`;
+    }
+
+    // historyOverride lets callers (edit, regenerate) hand us the EXACT prior
+    // history to build on — using the `messages` state closure directly here would
+    // be stale the instant a caller has just called setMessages() itself.
+    const baseMessages = historyOverride ?? messages;
+    const incomingMessages = [...baseMessages, { role: "user", text: payloadString, files: currentFiles.length > 0 ? currentFiles : undefined }];
+    setMessages(incomingMessages);
+    if (!historicalPrompt) setInputText("");
+    setAttachedFiles([]);
+    setIsGenerating(true);
+    setShowModelPills(false);
+
+    let workingChatId = currentChatId;
+    if (!workingChatId) {
+      workingChatId = `chat_${Date.now()}`;
+      setCurrentChatId(workingChatId);
+      // Instant fallback title (truncated raw text) so the chat appears in Recents
+      // immediately; replaced moments later by an AI-simplified title (below) —
+      // never blocks sending the message.
+      const fallbackTitle = activeText.length > 40 ? activeText.slice(0, 40) + "…" : activeText;
+      const newChat = { id: workingChatId, title: fallbackTitle, date: new Date().toLocaleDateString(), timestamp: Date.now(), history: incomingMessages, isNotebookAsset: false };
+      setSavedChats(prev => {
+        const updated = [newChat, ...prev];
+        localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
+        return updated;
+      });
+
+      const titleChatId = workingChatId;
+      fetch("/api/chat/title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: activeText }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d.title) return;
+          setSavedChats(prev => {
+            const updated = prev.map(c => (c.id === titleChatId ? { ...c, title: d.title } : c));
+            localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
+            return updated;
+          });
+        })
+        .catch(() => {}); // fallback title stands if this fails
+    } else {
+      setSavedChats(prev => {
+        const updated = prev.map(c => c.id === workingChatId ? { ...c, history: incomingMessages, timestamp: Date.now() } : c);
+        localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    try {
+      // Pass the pill straight through: "instant" -> Groq (fast), "expert" ->
+      // DeepSeek (deep), "vision" -> Gemini. The server (chatModelFor) maps it.
+      //
+      // These two flags are fast-paths that let the server skip the intent classifier.
+      // Keep them TIGHT: an over-broad diagram regex used to swallow image requests
+      // (e.g. "draw an image of a dog" matched "draw" -> forced diagram mode -> no image).
+      // Only unambiguous phrasing forces a mode here; everything else falls through to the
+      // Groq router, which distinguishes image vs diagram vs plain chat on its own.
+      const wantsImage =
+        /\b(image|picture|photo|portrait|painting|drawing|wallpaper|illustration)\b/i.test(activeText) &&
+        /\b(generate|create|make|draw|design|show|give)\b/i.test(activeText);
+      const needsDiagram =
+        !wantsImage && /\b(diagram|flow ?chart|org ?chart|mind ?map)\b/i.test(activeText);
+
+      const response = await fetch("/api/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: payloadString,
+          history: baseMessages,
+          modelType: selectedModel,
+          files: currentFiles,
+          generateImage: wantsImage,
+          generateDiagram: needsDiagram,
+          context: { documents: vaultDocuments.map(d => d.name), files: currentFiles.map(f => f.name) }
+        }),
+      });
+      if (!response.ok) throw new Error("Connection dropped.");
+      
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      const aiMessageId = `ai_${Date.now()}`;
+      let streamAccumulator = "";
+      let diagramData = null;
+      let imageData = null;
+      let sources: any[] = [];
+      let questionsData: any = null;
+
+      if (reader) {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+
+          // The server can append more than one trailing tag back-to-back with no
+          // await between them (e.g. [IMAGE]{...}[SOURCES]{...}), so a single
+          // network read can legitimately contain multiple tags at once. Scan for
+          // ALL marker positions in this chunk instead of treating them as mutually
+          // exclusive — otherwise only the first tag found would parse and the rest
+          // would leak into the visible text as raw JSON.
+          const TAG_MARKERS = ['[DIAGRAM]', '[QUESTIONS]', '[IMAGE]', '[SOURCES]'];
+          const foundTags = TAG_MARKERS
+            .map((marker) => ({ marker, index: chunk.indexOf(marker) }))
+            .filter((t) => t.index !== -1)
+            .sort((a, b) => a.index - b.index);
+
+          if (foundTags.length === 0) {
+            streamAccumulator += chunk;
+          } else {
+            streamAccumulator += chunk.slice(0, foundTags[0].index);
+            foundTags.forEach((tag, i) => {
+              const start = tag.index + tag.marker.length;
+              const end = i + 1 < foundTags.length ? foundTags[i + 1].index : chunk.length;
+              const payload = chunk.slice(start, end).trim();
+              try {
+                const parsed = payload ? JSON.parse(payload) : null;
+                if (!parsed) return;
+                if (tag.marker === '[DIAGRAM]') diagramData = parsed;
+                else if (tag.marker === '[QUESTIONS]') questionsData = parsed;
+                else if (tag.marker === '[IMAGE]') imageData = parsed;
+                else if (tag.marker === '[SOURCES]') sources = parsed;
+              } catch {
+                // Payload split across a chunk boundary (rare, small payloads) —
+                // fall back to showing it as plain text rather than losing it.
+                streamAccumulator += tag.marker + payload;
+              }
+            });
+          }
+
+          const nextState = [...incomingMessages, { role: "ai", id: aiMessageId, text: streamAccumulator, diagram: diagramData, image: imageData, sources: sources, questions: questionsData }];
+          setMessages(nextState);
+          setSavedChats(prev => {
+            const updated = prev.map(c => c.id === workingChatId ? { ...c, history: nextState } : c);
+            localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+
+      // MENTOR MODE: the AI asked for a form this turn — pop it up for the student.
+      if (questionsData?.questions?.length) {
+        setQuestionsModal({ id: aiMessageId, intro: questionsData.intro, questions: questionsData.questions });
+      }
+    } catch (err: any) {
+      setMessages(prev => [...prev.slice(0, -1), { role: "ai", text: `⚠️ API Error: ${err.message}` }]);
+    } finally { setIsGenerating(false); }
+  };
+
+  const regenerateResponse = () => {
+    if (messages.length < 2) return;
+    const lastUserMessage = messages[messages.length - 2];
+    if (lastUserMessage.role === 'user') {
+      // Everything strictly BEFORE the message being resent — handleSendMessage
+      // re-adds that message itself, so including it here would duplicate it.
+      const historyBeforeIt = messages.slice(0, -2);
+      setMessages(historyBeforeIt);
+      handleSendMessage(undefined, lastUserMessage.text, historyBeforeIt);
+    }
+  };
+
+  // Edit an earlier user message: discards everything from that point onward
+  // (like ChatGPT's edit) and resends the edited text as a fresh turn.
+  const editUserMessage = (index: number, newText: string) => {
+    if (index < 0 || index >= messages.length || messages[index].role !== 'user') return;
+    const historyBeforeIt = messages.slice(0, index);
+    setMessages(historyBeforeIt);
+    handleSendMessage(undefined, newText, historyBeforeIt);
+  };
+
+  // Student submitted the AI's pop-up question form — mark it answered, echo the
+  // answers back into the chat as their reply, and let the AI continue with them.
+  const handleSubmitQuestions = (submitted: { id: string; question: string; answer: string }[]) => {
+    const targetId = questionsModal?.id;
+    setQuestionsModal(null);
+    if (targetId) setAnsweredQuestions(prev => ({ ...prev, [targetId]: true }));
+    const summary = submitted.map(a => `- ${a.question} → ${a.answer}`).join("\n");
+    handleSendMessage(undefined, `Here are my answers:\n${summary}`);
+  };
+
+  // Reopen the form for a given AI message (e.g. if the student tapped "Later").
+  const openQuestionsFor = (msg: any) => {
+    if (!msg?.questions?.questions?.length) return;
+    setQuestionsModal({ id: msg.id, intro: msg.questions.intro, questions: msg.questions.questions });
+  };
+
+  const shareResponse = (text: string) => {
+    if (navigator.share) {
+      navigator.share({ title: 'bubbly Response', text: text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => alert('Response copied to clipboard!'));
+    }
+  };
+
+  const openSourceViewer = (sources: any[]) => {
+    setModalData(sources);
+    setActiveModal("sourceViewer");
+  };
+
+  const openAssetViewer = (asset: any) => {
+    setModalData(asset);
+    setActiveModal("assetViewer");
+  };
+
+  // Open a generated asset as a full page in the chat area (only once it's ready).
+  const openAsset = (row: any) => {
+    if (!row) return;
+    // "Failed — tap to dismiss" (Notebooks.tsx) — tapping a failed item removes
+    // it instead of silently doing nothing.
+    if (row.status === "failed") { deleteAsset(row); return; }
+    if (row.status !== "ready") return;
+    setActiveAssetId(row.id);
+    setActiveView("asset");
+    if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+  };
+
+  // Persist AssetPage changes (quiz progress, per-question chats, content edits).
+  const persistAsset = async (assetId: string, patch: any) => {
+    setNotebookAssets((prev) => prev.map((a) => (a.id === assetId ? { ...a, ...patch } : a)));
+    await supabase.from("notebook_assets").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", assetId);
+  };
+
+  // Row-menu actions for Notebooks (Supabase-backed notebook_assets).
+  const toggleAssetPin = (asset: any) => persistAsset(asset.id, { pinned: !asset.pinned });
+
+  const renameAsset = (asset: any, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    persistAsset(asset.id, { title: trimmed });
+  };
+
+  const deleteAsset = async (asset: any) => {
+    setNotebookAssets((prev) => prev.filter((a) => a.id !== asset.id));
+    if (activeAssetId === asset.id) { setActiveView("chat"); setActiveAssetId(null); }
+    await supabase.from("notebook_assets").delete().eq("id", asset.id).eq("user_id", user.id);
+  };
+
+  const shareAsset = (asset: any) => {
+    const text = `${asset.title}\n${asset.type}${asset.status === "ready" ? "" : ` (${asset.status})`}`;
+    if (navigator.share) {
+      navigator.share({ title: asset.title, text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+    }
+  };
+
+  // Map a modal's config to the shape lib/ai/generate.ts expects.
+  const buildGenConfig = (kind: string, c: any, sources: string[]) => {
+    if (kind === "quiz") return { questionCount: c.count, difficulty: c.difficulty, topic: c.topic, sources };
+    if (kind === "flashcards") return { cardCount: c.count, difficulty: c.difficulty, topic: c.topic, sources };
+    if (kind === "summary") return { topic: c.topic, length: c.length, sources };
+    if (kind === "slides") return { format: c.format, language: c.language, length: c.length, description: c.description, sources };
+    return { examType: c.examType, sources, config: c.config }; // exam / guide
+  };
+
+  // Non-blocking generation: create a placeholder row that shows in Notebooks
+  // instantly, close the config modal, and generate in the background (server-side,
+  // durable). Supabase realtime flips it spinner -> ready. The user keeps working.
+  const handleGenerate = async (
+    kind: "quiz" | "flashcards" | "slides" | "summary" | "exam",
+    label: string,
+    config: any
+  ) => {
+    setActiveModal(null);
+    const rowType = kind === "exam" && config?.examType === "guide" ? "guide" : kind;
+    const { data: row, error } = await supabase
+      .from("notebook_assets")
+      .insert({ user_id: user.id, type: rowType, title: label, status: "generating", config: {}, state: {} })
+      .select()
+      .single();
+    if (error || !row) {
+      alert("Couldn't start generation. Please try again.");
+      return;
+    }
+    setNotebookAssets((prev) => [row, ...prev]);
+
+    (async () => {
+      // Combine documents the student picked from their existing Vault (sourceIds)
+      // with any brand-new files attached right in the modal (files, uploaded now).
+      // Never let a fresh-upload hiccup wipe out already-valid picked sources —
+      // quiz/flashcards/summary/slides can still generate from whatever's left, or
+      // the topic alone. (Exam still needs at least one source either way.)
+      let sources: string[] = config.sourceIds?.length ? [...config.sourceIds] : [];
+      if (config.files?.length) {
+        try {
+          const uploadedIds = await uploadFilesToVault(config.files);
+          sources = [...sources, ...uploadedIds];
+        } catch (e) {
+          console.warn("New file upload failed — continuing with any already-selected Vault sources:", e);
+        }
+      }
+      try {
+        const genConfig = buildGenConfig(kind, config, sources);
+        await supabase.from("notebook_assets").update({ config: genConfig }).eq("id", row.id);
+        const res = await fetch("/api/notebook/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assetId: row.id, type: rowType, config: genConfig }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || "Generation failed");
+        }
+      } catch (e: any) {
+        await supabase
+          .from("notebook_assets")
+          .update({ status: "failed", error: e.message || "Generation failed" })
+          .eq("id", row.id);
+      }
+    })();
+  };
+
+  // ============================================
+  // AUDIO FUNCTIONS
+  // ============================================
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+      });
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        await transcribeAudio(blob);
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      const startTime = Date.now();
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } catch (error) {
+      console.error('Microphone access denied:', error);
+      alert('Unable to access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      setRecordingDuration(0);
+      const stream = mediaRecorderRef.current.stream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const transcribeAudio = async (blob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+      const response = await fetch('/api/transcribe', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (data.success) {
+        setInputText(prev => prev ? `${prev} ${data.text}` : data.text);
+        if (inputRef.current) inputRef.current.focus();
+      } else {
+        alert('Transcription failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      alert('Failed to transcribe audio.');
+    } finally { setIsTranscribing(false); }
+  };
+
+  // ============================================
+  // FILE UPLOAD
+  // ============================================
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const newFiles = Array.from(files);
+    setAttachedFiles(prev => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const handleFileClick = (file: any) => {
+    setModalData(file);
+    setActiveModal("filePreview");
+  };
+
+  // ============================================
+  // VAULT
+  // ============================================
+  const openVaultPreview = async (doc: any) => {
+    setModalData(doc);
+    setActiveModal("filePreview");
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+  if (isLoadingAuth) return (
+    <div className={`h-screen w-full ${colors.bgApp} flex items-center justify-center`}>
+      <Head><title>Loading - bubbly</title></Head>
+      <Loader2 className={`animate-spin ${colors.textPrimary} w-12 h-12`} />
+    </div>
+  );
+  
+  if (!isAuthenticated || showAuthScreen) return (
+    <div className={`h-screen w-full ${colors.bgApp} flex items-center justify-center p-4 transition-colors duration-300`}>
+      <Head><title>{authMode === "signin" ? "Sign In" : "Sign Up"} - bubbly</title></Head>
+      <div className="w-full max-w-md px-4">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Logo size={40} />
+          </div>
+          <p className={colors.textSecondary}>{authMode === "signin" ? "Welcome back! Sign in to continue." : "Create your account to get started."}</p>
+        </div>
+        <div className={`${colors.bgCard} border ${colors.borderBase} rounded-2xl p-6 shadow-xl`}>
+          <div className={`flex gap-2 mb-6 ${colors.bgInput} rounded-xl p-1`}>
+            <button onClick={() => { setAuthMode("signin"); setAuthError(""); }} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${authMode === "signin" ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>Sign In</button>
+            <button onClick={() => { setAuthMode("signup"); setAuthError(""); }} className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${authMode === "signup" ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>Sign Up</button>
+          </div>
+          {authError && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-500 flex items-start gap-2"><AlertCircle size={16} className="mt-0.5" /><span>{authError}</span></div>}
+          
+          <form onSubmit={authMode === "signin" ? handleSignIn : handleSignUp} className="space-y-4">
+            {authMode === "signup" && (
+              <div>
+                <label className={`block text-xs font-medium ${colors.textSecondary} mb-1.5`}>Full Name</label>
+                <div className="relative">
+                  <User size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textSecondary}`} />
+                  <input type="text" value={authName} onChange={(e) => setAuthName(e.target.value)} required className={`w-full ${colors.bgInput} border ${colors.borderBase} rounded-xl py-2.5 pl-10 pr-3 text-sm ${colors.textPrimary} outline-none focus:${colors.borderFocus}`} />
+                </div>
+              </div>
+            )}
+            <div>
+              <label className={`block text-xs font-medium ${colors.textSecondary} mb-1.5`}>Email</label>
+              <div className="relative">
+                <Mail size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textSecondary}`} />
+                <input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required className={`w-full ${colors.bgInput} border ${colors.borderBase} rounded-xl py-2.5 pl-10 pr-3 text-sm ${colors.textPrimary} outline-none focus:${colors.borderFocus}`} />
+              </div>
+            </div>
+            <div>
+              <label className={`block text-xs font-medium ${colors.textSecondary} mb-1.5`}>Password</label>
+              <div className="relative">
+                <Lock size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textSecondary}`} />
+                <input type={showPassword ? "text" : "password"} value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required minLength={6} className={`w-full ${colors.bgInput} border ${colors.borderBase} rounded-xl py-2.5 pl-10 pr-10 text-sm ${colors.textPrimary} outline-none focus:${colors.borderFocus}`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-1/2 -translate-y-1/2 ${colors.textSecondary}`}><Eye size={16} /></button>
+              </div>
+            </div>
+            <button type="submit" disabled={isAuthLoading} className={`w-full ${colors.btnPrimary} py-2.5 rounded-xl font-medium flex items-center justify-center gap-2`}>
+              {isAuthLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+              {authMode === "signin" ? "Sign In" : "Create Account"}
+            </button>
+          </form>
+          
+          <div className="relative my-6"><div className={`absolute inset-0 flex items-center border-t ${colors.borderBase}`}></div><div className="relative flex justify-center text-xs"><span className={`${colors.bgCard} px-2 ${colors.textSecondary}`}>or continue with</span></div></div>
+          
+          <button onClick={handleGoogleSignIn} disabled={isAuthLoading} className={`w-full flex items-center justify-center gap-3 border ${colors.borderBase} rounded-xl py-2.5 ${colors.bgHover} text-sm font-medium ${colors.textPrimary}`}>
+             <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+             Google
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const activeAsset = notebookAssets.find((a) => a.id === activeAssetId) || null;
+
+  return (
+    <div className={`flex h-screen w-full ${colors.bgApp} ${colors.textPrimary} overflow-hidden transition-colors duration-300`}>
+      <Head>
+        <title>bubbly</title>
+        <link rel="icon" href="/favicon.png" />
+      </Head>
+      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
+      
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && <div className="md:hidden fixed inset-0 bg-black/60 z-30 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />}
+
+     {/* Sidebar */}
+<Sidebar
+  isOpen={isSidebarOpen}
+  isMobileMenuOpen={isMobileMenuOpen}
+  onToggle={() => setSidebarOpen(!isSidebarOpen)}
+  onCloseMobile={() => setIsMobileMenuOpen(false)}
+  user={user}
+  notebookAssets={notebookAssets}
+  categorizedChats={categorizedChats}
+  currentChatId={currentChatId}
+  onStartNewChat={startNewChat}
+  onLoadChat={loadChat}
+  onOpenAsset={openAsset}
+  onPinChat={toggleChatPin}
+  onRenameChat={renameChat}
+  onDeleteChat={deleteChat}
+  onShareChat={shareChat}
+  onPinAsset={toggleAssetPin}
+  onRenameAsset={renameAsset}
+  onDeleteAsset={deleteAsset}
+  onShareAsset={shareAsset}
+  onOpenSettings={() => { setActiveModal("settings"); setSettingsTab("general"); }}
+  onOpenQuiz={() => setActiveModal("quiz")}
+  onOpenFlashcards={() => setActiveModal("flashcards")}
+  onOpenSummary={() => setActiveModal("summary")}
+  onOpenSlides={() => setActiveModal("slides")}
+  onOpenExam={() => setActiveModal("exam")}
+  onNavigateToVault={() => {
+    if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+    window.location.href = "/vault";
+  }}
+  colors={colors}
+  logoSrc={logoSrc}
+  theme={theme}
+  activeView={activeView}
+/>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col relative h-full overflow-hidden w-full">
+        {activeView === "asset" && activeAsset ? (
+          <AssetPage
+            asset={activeAsset}
+            onBack={() => { setActiveView("chat"); setActiveAssetId(null); }}
+            onPersist={(patch) => persistAsset(activeAsset.id, patch)}
+          />
+        ) : (
+        <>
+        {/* Header */}
+        <div className={`flex items-center justify-between px-3 md:px-4 py-2 h-[48px] border-b ${colors.borderBase} ${colors.bgSidebar} md:bg-transparent md:border-b-0`}>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsMobileMenuOpen(true)} className={`md:hidden p-1.5 ${colors.textSecondary} ${colors.bgHover} rounded-lg`}>
+              <Menu size={18} />
+            </button>
+          </div>
+          <button onClick={() => setActiveModal("search")} className={`p-1.5 ${colors.bgInput} border ${colors.borderBase} rounded-full transition-all flex items-center justify-center shadow-sm`}>
+            <Search size={15} className={colors.textSecondary} />
+          </button>
+        </div>
+
+        {/* Chat View */}
+        <ChatView
+          messages={messages}
+          isGenerating={isGenerating}
+          inputText={inputText}
+          setInputText={setInputText}
+          attachedFiles={attachedFiles}
+          setAttachedFiles={setAttachedFiles}
+          selectedModel={selectedModel}
+          showModelPills={showModelPills}
+          isRecording={isRecording}
+          recordingDuration={recordingDuration}
+          isTranscribing={isTranscribing}
+          onSendMessage={handleSendMessage}
+          onModelSelect={handleModelSelect}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          onFileUpload={handleFileUpload}
+          onGoogleDriveClick={launchGoogleDrivePicker}
+          onFileClick={handleFileClick}
+          onEditMessage={editUserMessage}
+          onRegenerate={regenerateResponse}
+          onShare={shareResponse}
+          onOpenSourceViewer={openSourceViewer}
+          onOpenAsset={openAssetViewer}
+          answeredQuestions={answeredQuestions}
+          onOpenQuestions={openQuestionsFor}
+          activeQuestions={questionsModal}
+          onSubmitQuestions={handleSubmitQuestions}
+          onCloseQuestions={() => setQuestionsModal(null)}
+          onOpenQuiz={() => setActiveModal("quiz")}
+          onOpenFlashcards={() => setActiveModal("flashcards")}
+          onOpenSummary={() => setActiveModal("summary")}
+          onOpenSlides={() => setActiveModal("slides")}
+          onOpenExam={() => setActiveModal("exam")}
+          colors={colors}
+          logoSrc={logoSrc}
+          videoSrc={videoSrc}
+          theme={theme}
+          chatBottomRef={chatBottomRef}
+          inputRef={inputRef}
+          fileInputRef={fileInputRef}
+          videoRef={videoRef}
+        />
+        </>
+        )}
+
+        {/* Modals */}
+        <SearchModal
+          open={activeModal === "search"}
+          onClose={() => setActiveModal(null)}
+          chats={savedChats}
+          onSelect={loadChat}
+          colors={colors}
+        />
+
+        <SettingsModal
+          open={activeModal === "settings"}
+          onClose={() => setActiveModal(null)}
+          initialTab={settingsTab}
+          user={user}
+          onSignOut={handleSignOut}
+          colors={colors}
+        />
+
+        <QuizModal
+          open={activeModal === "quiz"}
+          onClose={() => setActiveModal(null)}
+          onGenerate={(config) => handleGenerate("quiz", "Quiz", config)}
+          colors={colors}
+          vaultDocuments={vaultDocuments}
+        />
+
+        <FlashcardModal
+          open={activeModal === "flashcards"}
+          onClose={() => setActiveModal(null)}
+          onGenerate={(config) => handleGenerate("flashcards", "Flashcards", config)}
+          colors={colors}
+          vaultDocuments={vaultDocuments}
+        />
+
+        <SlidesModal
+          open={activeModal === "slides"}
+          onClose={() => setActiveModal(null)}
+          onGenerate={(config) => handleGenerate("slides", "Slides", config)}
+          colors={colors}
+          vaultDocuments={vaultDocuments}
+        />
+
+        <SummaryModal
+          open={activeModal === "summary"}
+          onClose={() => setActiveModal(null)}
+          onGenerate={(config) => handleGenerate("summary", "Summary", config)}
+          colors={colors}
+          vaultDocuments={vaultDocuments}
+        />
+
+        <ExamModal
+          open={activeModal === "exam"}
+          onClose={() => setActiveModal(null)}
+          onGenerate={(config) => handleGenerate("exam", "Exam Prep", config)}
+          colors={colors}
+          vaultDocuments={vaultDocuments}
+        />
+
+        <SourcesModal
+          open={activeModal === "sources"}
+          onClose={() => setActiveModal(null)}
+          sources={[]}
+          onConfirm={(selected) => {
+            setActiveModal(null);
+          }}
+          colors={colors}
+        />
+
+        <FilePreviewModal
+          open={activeModal === "filePreview"}
+          onClose={() => setActiveModal(null)}
+          file={modalData}
+          colors={colors}
+        />
+
+        <AssetViewer
+          open={activeModal === "assetViewer"}
+          onClose={() => setActiveModal(null)}
+          asset={modalData}
+          colors={colors}
+        />
+
+        <SourceViewerModal
+          open={activeModal === "sourceViewer"}
+          onClose={() => setActiveModal(null)}
+          sources={modalData}
+          colors={colors}
+        />
+
+      </div>
+    </div>
+  );
+}
