@@ -12,14 +12,12 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~57.0.5",
     "@google/genai": "^0.3.1",
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.109.0",
     "@tailwindcss/postcss": "^4.3.2",
     "@tailwindcss/typography": "^0.5.20",
     "adm-zip": "^0.5.18",
-    "expo": "^57.0.6",
     "framer-motion": "^12.42.2",
     "lucide-react": "^0.263.1",
     "mammoth": "^1.12.0",
@@ -29,8 +27,6 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^9.1.0",
-    "react-native": "^0.86.0",
-    "react-native-web": "^0.21.2",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "xlsx": "^0.18.5"
@@ -40,6 +36,8 @@
     "@types/node": "20.10.0",
     "@types/react": "18.2.45",
     "@types/react-dom": "18.2.18",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
     "autoprefixer": "^10.5.2",
     "eslint": "8.56.0",
     "eslint-config-next": "15.0.0",
