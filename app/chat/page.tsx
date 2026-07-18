@@ -79,6 +79,13 @@ const customStyles = `
   .recording-pulse { animation: pulse-ring 1.5s infinite; }
 `;
 
+// Maps a Supabase chat_sessions row to the shape the UI already expects
+// (timestamp/date derived from updated_at so Recents' date-bucketing keeps working).
+function mapChatRow(row: any) {
+  const t = new Date(row.updated_at || row.created_at).getTime();
+  return { id: row.id, title: row.title, pinned: row.pinned, history: row.history, timestamp: t, date: new Date(t).toLocaleDateString() };
+}
+
 export default function Workspace() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -175,24 +182,10 @@ export default function Workspace() {
   // ============================================
   // SAVED CHATS
   // ============================================
-  useEffect(() => {
-    const storedChats = localStorage.getItem('bubbly_vault_conversations') || localStorage.getItem('studix_vault_conversations');
-    if (storedChats) {
-      try {
-        const parsed = JSON.parse(storedChats);
-        setSavedChats(parsed);
-      } catch (e) {
-        console.error("Failed to parse stored chats:", e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (savedChats.length > 0) {
-      localStorage.setItem('bubbly_vault_conversations', JSON.stringify(savedChats));
-      localStorage.removeItem('studix_vault_conversations');
-    }
-  }, [savedChats]);
+  // Chats are now account-based (Supabase chat_sessions, loaded in loadUserData)
+  // instead of browser-scoped localStorage — see mapChatRow + the one-time legacy
+  // import above. Each explicit action (send/rename/pin/delete) writes directly
+  // to Supabase at its own call site rather than via a blanket auto-save effect.
 
   useEffect(() => {
     if (messages.length === 0 && !currentChatId) {
@@ -202,10 +195,9 @@ export default function Workspace() {
     }
   }, [messages, currentChatId]);
 
-  // ============================================
-  // NOTEBOOK ASSETS
-  // ============================================
-  const standardChats = savedChats.filter(c => !c.isNotebookAsset);
+  // savedChats is chat_sessions rows only now — Notebook assets live entirely in
+  // their own Supabase table/state (notebookAssets, below), never mixed in here.
+  const standardChats = savedChats;
 
   const categorizedChats = useMemo(() => {
     const now = new Date();
@@ -370,13 +362,41 @@ export default function Workspace() {
   }, [supabase]);
 
   const loadUserData = async (userId: string) => {
-    const storedChats = localStorage.getItem('bubbly_vault_conversations') || localStorage.getItem('studix_vault_conversations');
-    if (storedChats) {
-      try {
-        const parsed = JSON.parse(storedChats);
-        setSavedChats(parsed);
-      } catch (e) {
-        console.error("Failed to parse stored chats:", e);
+    const { data: chats } = await supabase
+      .from('chat_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (chats && chats.length > 0) {
+      setSavedChats(chats.map(mapChatRow));
+    } else {
+      // One-time import: this account has no Supabase-backed chats yet, but this
+      // browser/origin may still have old localStorage history (chats were
+      // browser-scoped before this migration, so switching domains — e.g. moving
+      // from local dev to the production URL — made history "disappear"). Import
+      // it once so it isn't silently stranded, then stop relying on localStorage.
+      const legacy = localStorage.getItem('bubbly_vault_conversations') || localStorage.getItem('studix_vault_conversations');
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy).filter((c: any) => !c.isNotebookAsset && c.history?.length);
+          if (parsed.length > 0) {
+            const rows = parsed.map((c: any) => ({
+              user_id: userId,
+              title: c.title || 'Untitled chat',
+              pinned: !!c.pinned,
+              history: c.history,
+              created_at: c.timestamp ? new Date(c.timestamp).toISOString() : new Date().toISOString(),
+              updated_at: c.timestamp ? new Date(c.timestamp).toISOString() : new Date().toISOString(),
+            }));
+            const { data: imported } = await supabase.from('chat_sessions').insert(rows).select();
+            if (imported) setSavedChats(imported.map(mapChatRow).sort((a, b) => b.timestamp - a.timestamp));
+          }
+        } catch (e) {
+          console.warn('Legacy chat import failed (non-fatal):', e);
+        }
+        localStorage.removeItem('bubbly_vault_conversations');
+        localStorage.removeItem('studix_vault_conversations');
       }
     }
 
@@ -506,11 +526,6 @@ export default function Workspace() {
   };
 
   const loadChat = (item: any) => {
-    if (item.isNotebookAsset) {
-      // Legacy localStorage notebook entries (pre-Supabase) — ignore; new assets
-      // open as pages from the Notebooks list.
-      return;
-    }
     setActiveView("chat");
     setActiveAssetId(null);
     const chat = savedChats.find(c => c.id === item.id || c.id === item);
@@ -522,26 +537,27 @@ export default function Workspace() {
     }
   };
 
-  // Row-menu actions for chat history (Recents) — persisted the same way as
-  // everything else in savedChats: the existing effect writes it to localStorage
-  // whenever the array changes.
+  // Row-menu actions for chat history (Recents) — each writes through to
+  // Supabase (chat_sessions) immediately, fire-and-forget, so it's account-based
+  // rather than tied to this one browser.
   const toggleChatPin = (chatId: string) => {
-    setSavedChats(prev => prev.map(c => (c.id === chatId ? { ...c, pinned: !c.pinned } : c)));
+    const chat = savedChats.find(c => c.id === chatId);
+    const nextPinned = !chat?.pinned;
+    setSavedChats(prev => prev.map(c => (c.id === chatId ? { ...c, pinned: nextPinned } : c)));
+    supabase.from('chat_sessions').update({ pinned: nextPinned }).eq('id', chatId).then(() => {}, () => {});
   };
 
   const renameChat = (chatId: string, title: string) => {
     const trimmed = title.trim();
     if (!trimmed) return;
     setSavedChats(prev => prev.map(c => (c.id === chatId ? { ...c, title: trimmed } : c)));
+    supabase.from('chat_sessions').update({ title: trimmed }).eq('id', chatId).then(() => {}, () => {});
   };
 
   const deleteChat = (chatId: string) => {
-    setSavedChats(prev => {
-      const updated = prev.filter(c => c.id !== chatId);
-      localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
-      return updated;
-    });
+    setSavedChats(prev => prev.filter(c => c.id !== chatId));
     if (currentChatId === chatId) startNewChat();
+    supabase.from('chat_sessions').delete().eq('id', chatId).then(() => {}, () => {});
   };
 
   const shareChat = (chat: any) => {
@@ -583,42 +599,46 @@ export default function Workspace() {
 
     let workingChatId = currentChatId;
     if (!workingChatId) {
-      workingChatId = `chat_${Date.now()}`;
-      setCurrentChatId(workingChatId);
       // Instant fallback title (truncated raw text) so the chat appears in Recents
       // immediately; replaced moments later by an AI-simplified title (below) —
       // never blocks sending the message.
       const fallbackTitle = activeText.length > 40 ? activeText.slice(0, 40) + "…" : activeText;
-      const newChat = { id: workingChatId, title: fallbackTitle, date: new Date().toLocaleDateString(), timestamp: Date.now(), history: incomingMessages, isNotebookAsset: false };
-      setSavedChats(prev => {
-        const updated = [newChat, ...prev];
-        localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
-        return updated;
-      });
+      const { data: row } = await supabase
+        .from('chat_sessions')
+        .insert({ user_id: user.id, title: fallbackTitle, history: incomingMessages })
+        .select()
+        .single();
+      // Falls back to a local-only id if the insert fails transiently, so the
+      // turn can still proceed — it just won't persist across reloads this time.
+      workingChatId = row?.id || `chat_${Date.now()}`;
+      setCurrentChatId(workingChatId);
+      const newChat = row ? mapChatRow(row) : { id: workingChatId, title: fallbackTitle, pinned: false, date: new Date().toLocaleDateString(), timestamp: Date.now(), history: incomingMessages };
+      setSavedChats(prev => [newChat, ...prev]);
 
-      const titleChatId = workingChatId;
-      fetch("/api/chat/title", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: activeText }),
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (!d.title) return;
-          setSavedChats(prev => {
-            const updated = prev.map(c => (c.id === titleChatId ? { ...c, title: d.title } : c));
-            localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
-            return updated;
-          });
+      if (row) {
+        const titleChatId = workingChatId;
+        fetch("/api/chat/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: activeText }),
         })
-        .catch(() => {}); // fallback title stands if this fails
+          .then((r) => r.json())
+          .then((d) => {
+            if (!d.title) return;
+            setSavedChats(prev => prev.map(c => (c.id === titleChatId ? { ...c, title: d.title } : c)));
+            supabase.from('chat_sessions').update({ title: d.title }).eq('id', titleChatId).then(() => {}, () => {});
+          })
+          .catch(() => {}); // fallback title stands if this fails
+      }
     } else {
-      setSavedChats(prev => {
-        const updated = prev.map(c => c.id === workingChatId ? { ...c, history: incomingMessages, timestamp: Date.now() } : c);
-        localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
-        return updated;
-      });
+      setSavedChats(prev => prev.map(c => c.id === workingChatId ? { ...c, history: incomingMessages, timestamp: Date.now() } : c));
+      // No Supabase write here — the single write after the AI reply completes
+      // (below) covers both this user message and the reply in one round-trip.
     }
+
+    // Tracks the latest full message list through the stream so a single Supabase
+    // write can happen once, after the reply finishes, instead of on every chunk.
+    let finalMessages = incomingMessages;
 
     try {
       // Pass the pill straight through: "instant" -> Groq (fast), "expert" ->
@@ -700,12 +720,12 @@ export default function Workspace() {
           }
 
           const nextState = [...incomingMessages, { role: "ai", id: aiMessageId, text: streamAccumulator, diagram: diagramData, image: imageData, sources: sources, questions: questionsData }];
+          finalMessages = nextState;
           setMessages(nextState);
-          setSavedChats(prev => {
-            const updated = prev.map(c => c.id === workingChatId ? { ...c, history: nextState } : c);
-            localStorage.setItem('bubbly_vault_conversations', JSON.stringify(updated));
-            return updated;
-          });
+          // Local state only during streaming — writing to Supabase on every token
+          // would be dozens of round-trips per reply. One write happens below,
+          // once the full reply is in.
+          setSavedChats(prev => prev.map(c => c.id === workingChatId ? { ...c, history: nextState } : c));
         }
       }
 
@@ -713,6 +733,12 @@ export default function Workspace() {
       if (questionsData?.questions?.length) {
         setQuestionsModal({ id: aiMessageId, intro: questionsData.intro, questions: questionsData.questions });
       }
+
+      supabase
+        .from('chat_sessions')
+        .update({ history: finalMessages, updated_at: new Date().toISOString() })
+        .eq('id', workingChatId)
+        .then(() => {}, () => {});
     } catch (err: any) {
       setMessages(prev => [...prev.slice(0, -1), { role: "ai", text: `⚠️ API Error: ${err.message}` }]);
     } finally { setIsGenerating(false); }
