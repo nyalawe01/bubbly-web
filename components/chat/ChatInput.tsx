@@ -180,11 +180,10 @@ export function ChatInput({
         )}
 
         <div className="flex px-1.5 py-1 mt-0.5">
-          {/* max-w caps the readable line length (~70 characters) so typed text
-              wraps to the next line at a comfortable width instead of stretching
-              edge-to-edge on wide screens. Base (mobile) tier stays touch-comfortable —
-              only the md: (desktop) tier is compact, since the sidebar/desktop shrink
-              request was never meant to cramp phone-width screens. */}
+          {/* Fills the composer edge-to-edge (no ch-width cap) — a global
+              :focus-visible outline rule in globals.css would otherwise paint an
+              accent-colored ring around the textarea on click; !outline-none forces
+              it off here since the outer pill already shows its own focus border. */}
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -192,7 +191,7 @@ export function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={`Message bubbly ${modelNames[selectedModel]}...`}
             rows={1}
-            className={`flex-1 max-w-[70ch] bg-transparent outline-none py-1.5 md:py-1.5 ${colors.textPrimary} placeholder:${colors.textSecondary} text-[15px] md:text-[13px] font-medium resize-none min-h-[40px] md:min-h-[32px] max-h-[120px] md:max-h-[100px] overflow-y-auto hide-scrollbar`}
+            className={`flex-1 w-full bg-transparent !outline-none py-1.5 md:py-1.5 ${colors.textPrimary} placeholder:${colors.textSecondary} text-[15px] md:text-[13px] font-medium resize-none min-h-[40px] md:min-h-[32px] max-h-[120px] md:max-h-[100px] overflow-y-auto hide-scrollbar`}
             style={{ height: 'auto' }}
           />
         </div>
