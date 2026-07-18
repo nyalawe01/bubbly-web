@@ -76,10 +76,10 @@ export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onSh
             <button
               onClick={() => onOpenAsset(asset)}
               disabled={generating || isRenaming}
-              className={`flex-1 min-w-0 text-left flex items-center gap-2 p-1.5 rounded-lg ${generating ? "opacity-70 cursor-default" : ""}`}
+              className={`flex-1 min-w-0 text-left flex items-center gap-2 p-2 md:p-1.5 rounded-lg ${generating ? "opacity-70 cursor-default" : ""}`}
             >
               <div className={`p-1.5 rounded-md flex-shrink-0 ${COLORS[asset.type] || "bg-emerald-500/10 text-emerald-400"}`}>
-                {generating ? <Loader2 size={13} className="animate-spin" /> : failed ? <AlertCircle size={13} className="text-red-500" /> : <Icon size={13} />}
+                {generating ? <Loader2 size={14} className="animate-spin md:w-[13px] md:h-[13px]" /> : failed ? <AlertCircle size={14} className="text-red-500 md:w-[13px] md:h-[13px]" /> : <Icon size={14} className="md:w-[13px] md:h-[13px]" />}
               </div>
               <div className="flex-1 min-w-0">
                 {isRenaming ? (
@@ -93,17 +93,17 @@ export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onSh
                       if (e.key === "Escape") setRenamingId(null);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`w-full text-[13px] font-medium leading-snug bg-transparent outline-none ${colors.textPrimary}`}
+                    className={`w-full text-[14px] md:text-[13px] font-medium leading-snug bg-transparent outline-none ${colors.textPrimary}`}
                   />
                 ) : (
                   <div
-                    className={`text-[13px] font-medium ${colors.textPrimary} truncate leading-snug`}
+                    className={`text-[14px] md:text-[13px] font-medium ${colors.textPrimary} truncate leading-snug`}
                     style={darkWhite ? { color: "#fff" } : undefined}
                   >
                     {asset.title}
                   </div>
                 )}
-                <div className={`text-[11px] ${failed ? "text-red-500" : colors.textSecondary} truncate mt-0.5`}>{subtitle(asset)}</div>
+                <div className={`text-[12px] md:text-[11px] ${failed ? "text-red-500" : colors.textSecondary} truncate mt-0.5`}>{subtitle(asset)}</div>
               </div>
             </button>
             {!isRenaming && (

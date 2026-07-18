@@ -996,14 +996,14 @@ export default function Workspace() {
   // RENDER
   // ============================================
   if (isLoadingAuth) return (
-    <div className={`h-screen w-full ${colors.bgApp} flex items-center justify-center`}>
+    <div className={`h-dvh w-full ${colors.bgApp} flex items-center justify-center`}>
       <Head><title>Loading - bubbly</title></Head>
       <Loader2 className={`animate-spin ${colors.textPrimary} w-12 h-12`} />
     </div>
   );
   
   if (!isAuthenticated || showAuthScreen) return (
-    <div className={`h-screen w-full ${colors.bgApp} flex items-center justify-center p-4 transition-colors duration-300`}>
+    <div className={`h-dvh w-full ${colors.bgApp} flex items-center justify-center p-4 transition-colors duration-300`}>
       <Head><title>{authMode === "signin" ? "Sign In" : "Sign Up"} - bubbly</title></Head>
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
@@ -1064,7 +1064,7 @@ export default function Workspace() {
   const activeAsset = notebookAssets.find((a) => a.id === activeAssetId) || null;
 
   return (
-    <div className={`flex h-screen w-full ${colors.bgApp} ${colors.textPrimary} overflow-hidden transition-colors duration-300`}>
+    <div className={`flex h-dvh w-full ${colors.bgApp} ${colors.textPrimary} overflow-hidden transition-colors duration-300`}>
       <Head>
         <title>bubbly</title>
         <link rel="icon" href="/favicon.png" />

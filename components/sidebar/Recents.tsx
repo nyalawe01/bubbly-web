@@ -87,12 +87,12 @@ export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onD
                                   if (e.key === "Escape") setRenamingId(null);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className={`flex-1 min-w-0 text-[13px] leading-snug px-2.5 py-1.5 rounded-lg bg-transparent outline-none ${colors.textPrimary}`}
+                                className={`flex-1 min-w-0 text-[14px] md:text-[13px] leading-snug px-2.5 py-2 md:py-1.5 rounded-lg bg-transparent outline-none ${colors.textPrimary}`}
                               />
                             ) : (
                               <button
                                 onClick={() => onLoadChat(chat)}
-                                className={`flex-1 min-w-0 text-left truncate text-[13px] leading-snug px-2.5 py-1.5 ${
+                                className={`flex-1 min-w-0 text-left truncate text-[14px] md:text-[13px] leading-snug px-2.5 py-2 md:py-1.5 ${
                                   currentChatId === chat.id ? colors.textPrimary : colors.textSecondary
                                 }`}
                                 style={darkWhite ? { color: "#fff" } : undefined}

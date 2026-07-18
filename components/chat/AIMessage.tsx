@@ -70,7 +70,7 @@ export function AIMessage({
             ) : (
               <div
                 key={i}
-                className={`prose prose-sm md:prose-base max-w-none leading-relaxed ai-prose ${
+                className={`prose prose-base md:prose-base max-w-none leading-relaxed ai-prose ${
                   theme === "dark" ? "dark:prose-invert prose-zinc" : "prose-zinc"
                 }`}
               >

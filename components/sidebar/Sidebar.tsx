@@ -181,12 +181,12 @@ export function Sidebar({
                 key={key}
                 onClick={onClick}
                 className={`nav-row w-full flex items-center gap-2.5 rounded-lg transition-colors ${
-                  showContent ? "px-2.5 py-1.5" : "justify-center py-2"
+                  showContent ? "px-2.5 py-2.5 md:py-1.5" : "justify-center py-2"
                 } ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}
               >
-                <Icon size={16} className="flex-shrink-0" color={darkWhite ? "#ffffff" : undefined} />
+                <Icon size={17} className="flex-shrink-0 md:w-4 md:h-4" color={darkWhite ? "#ffffff" : undefined} />
                 {showContent && (
-                  <span className="text-[13px] font-medium truncate" style={darkWhite ? { color: "#fff" } : undefined}>
+                  <span className="text-[14px] md:text-[13px] font-medium truncate" style={darkWhite ? { color: "#fff" } : undefined}>
                     {label}
                   </span>
                 )}

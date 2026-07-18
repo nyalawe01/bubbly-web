@@ -52,9 +52,9 @@ export function UserMessage({ message, onFileClick, onEdit, colors }: UserMessag
     // Wider than before, and grows to the LEFT (right edge stays anchored by the
     // outer justify-end wrapper). Copy/Edit sit bottom-right, under the bubble,
     // invisible until the bubble/row is hovered — group-hover, no layout shift.
-    <div className="group flex flex-col items-end max-w-[85%] md:max-w-[78%]">
+    <div className="group flex flex-col items-end max-w-[88%] md:max-w-[78%]">
       <div
-        className={`w-full rounded-xl p-2.5 md:p-3 text-[13px] md:text-[14px] ${colors.bgInput} whitespace-pre-wrap border ${colors.borderBase} shadow-sm`}
+        className={`w-full rounded-xl p-3 md:p-3 text-[15px] md:text-[14px] ${colors.bgInput} whitespace-pre-wrap border ${colors.borderBase} shadow-sm`}
       >
         {message.files && message.files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2">

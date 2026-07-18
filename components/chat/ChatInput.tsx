@@ -105,14 +105,14 @@ export function ChatInput({
   const canSend = !isGenerating && (inputText.trim().length > 0 || attachedFiles.length > 0);
 
   return (
-    <div className="max-w-4xl mx-auto relative flex flex-col items-center">
+    <div className="max-w-3xl mx-auto relative flex flex-col items-center">
       {showModelPills && (
         <div className={`flex items-center ${colors.bgInput} border ${colors.borderBase} rounded-full p-0.5 w-max mb-1.5 md:mb-2 shadow-sm transition-all`}>
           {(["instant", "expert", "vision"] as const).map((model) => (
             <button
               key={model}
               onClick={() => onModelSelect(model)}
-              className={`icon-motion flex items-center gap-1 md:gap-1.5 px-2.5 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-[12px] font-medium transition-colors ${
+              className={`icon-motion flex items-center gap-1.5 md:gap-1.5 px-3 md:px-3 py-1.5 md:py-1 rounded-full text-[12px] md:text-[12px] font-medium transition-colors ${
                 selectedModel === model
                   ? theme === "dark"
                     ? "bg-zinc-800 text-white"
@@ -126,8 +126,8 @@ export function ChatInput({
         </div>
       )}
 
-      <div className={`w-full ${colors.bgCard} border ${colors.borderBase} rounded-[18px] md:rounded-[24px] p-1 md:p-1.5 focus-within:${colors.borderFocus} ${theme === "dark" ? "" : "shadow-lg"} transition-all flex flex-col relative overflow-visible`}>
-        <div className="absolute inset-0 rounded-[18px] md:rounded-[24px] overflow-hidden pointer-events-none">
+      <div className={`w-full ${colors.bgCard} border ${colors.borderBase} rounded-[22px] md:rounded-[24px] p-1.5 focus-within:${colors.borderFocus} ${theme === "dark" ? "" : "shadow-lg"} transition-all flex flex-col relative overflow-visible`}>
+        <div className="absolute inset-0 rounded-[22px] md:rounded-[24px] overflow-hidden pointer-events-none">
           <div className="glow-line-left absolute top-0 h-[1.5px] w-1/2 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-70"></div>
           <div className="glow-line-right absolute bottom-0 h-[1.5px] w-1/2 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-70"></div>
         </div>
@@ -179,10 +179,12 @@ export function ChatInput({
           </div>
         )}
 
-        <div className="flex px-1 md:px-1.5 py-0.5 mt-0.5">
+        <div className="flex px-1.5 py-1 mt-0.5">
           {/* max-w caps the readable line length (~70 characters) so typed text
               wraps to the next line at a comfortable width instead of stretching
-              edge-to-edge on wide screens. */}
+              edge-to-edge on wide screens. Base (mobile) tier stays touch-comfortable —
+              only the md: (desktop) tier is compact, since the sidebar/desktop shrink
+              request was never meant to cramp phone-width screens. */}
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -190,7 +192,7 @@ export function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={`Message bubbly ${modelNames[selectedModel]}...`}
             rows={1}
-            className={`flex-1 max-w-[70ch] bg-transparent outline-none py-1 md:py-1.5 ${colors.textPrimary} placeholder:${colors.textSecondary} text-[12px] md:text-[13px] font-medium resize-none min-h-[28px] max-h-[100px] overflow-y-auto hide-scrollbar`}
+            className={`flex-1 max-w-[70ch] bg-transparent outline-none py-1.5 md:py-1.5 ${colors.textPrimary} placeholder:${colors.textSecondary} text-[15px] md:text-[13px] font-medium resize-none min-h-[40px] md:min-h-[32px] max-h-[120px] md:max-h-[100px] overflow-y-auto hide-scrollbar`}
             style={{ height: 'auto' }}
           />
         </div>
@@ -201,7 +203,6 @@ export function ChatInput({
               <IconButton
                 icon={Plus}
                 label="Attach"
-                size="sm"
                 onClick={() => setIsUploadGridOpen(!isUploadGridOpen)}
                 className={isUploadGridOpen ? "rotate-45" : ""}
               />
@@ -236,7 +237,6 @@ export function ChatInput({
             <IconButton
               icon={isRecording ? Square : isTranscribing ? Loader2 : Mic}
               label={isRecording ? "Stop recording" : "Record"}
-              size="sm"
               onClick={isRecording ? onStopRecording : onStartRecording}
               disabled={isTranscribing}
               variant={isRecording ? "danger" : "ghost"}
@@ -254,7 +254,6 @@ export function ChatInput({
             icon={isGenerating ? Loader2 : AnimatedSendIcon}
             label="Send"
             variant="solid"
-            size="sm"
             disabled={!canSend}
             onClick={() => onSendMessage()}
             className={isGenerating ? "animate-spin" : ""}
@@ -262,7 +261,7 @@ export function ChatInput({
         </div>
       </div>
 
-      <div className={`text-center mt-1.5 text-[8px] md:text-[9px] ${colors.textSecondary} font-medium tracking-wide`}>
+      <div className={`text-center mt-1.5 text-[10px] md:text-[9px] ${colors.textSecondary} font-medium tracking-wide`}>
         bubbly Core Integration
       </div>
 

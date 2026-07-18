@@ -145,26 +145,26 @@ export function ChatView(props: ChatViewProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 md:px-20 pt-4 md:pt-6 pb-48 md:pb-56 hide-scrollbar scroll-smooth"
+        className="flex-1 overflow-y-auto px-4 md:px-20 pt-4 md:pt-6 pb-48 md:pb-56 hide-scrollbar scroll-smooth"
       >
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 md:space-y-6 mt-[-5vh] md:mt-[-10vh] animate-in fade-in relative">
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-5 md:space-y-6 mt-[-5vh] md:mt-[-10vh] animate-in fade-in relative">
             {/* Curated, theme-aware illustration vignette behind the hero. */}
             <ArtLayer surface="chat" hero />
 
-            <h1 className="text-xl md:text-2xl font-medium tracking-tight relative z-10 px-4">
+            <h1 className="text-2xl md:text-2xl font-medium tracking-tight relative z-10 px-4">
               {t("chat.explore")}
             </h1>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-2.5 w-full max-w-2xl mt-3 relative z-10 px-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-2.5 w-full max-w-2xl mt-3 relative z-10 px-2">
               {QUICK_ACTIONS.map(({ key, icon: Icon }, i) => (
                 <Reveal key={key} delay={i * 0.05}>
                   <button
                     onClick={actionHandlers[key]}
-                    className={`icon-motion w-full p-2.5 md:p-3 ${colors.bgCard} border ${colors.borderBase} rounded-xl ${colors.bgHover} flex flex-col items-center gap-1.5 shadow-sm`}
+                    className={`icon-motion w-full p-3 md:p-3 ${colors.bgCard} border ${colors.borderBase} rounded-xl ${colors.bgHover} flex flex-col items-center gap-1.5 shadow-sm`}
                   >
-                    <IconChip icon={Icon} size={16} boxScale={2.2} className={`border ${colors.borderBase} shadow-sm`} />
-                    <span className="text-[9px] md:text-xs font-medium text-center leading-tight">{actionLabels[key]}</span>
+                    <IconChip icon={Icon} size={18} boxScale={2.2} className={`border ${colors.borderBase} shadow-sm`} />
+                    <span className="text-[11px] md:text-xs font-medium text-center leading-tight">{actionLabels[key]}</span>
                   </button>
                 </Reveal>
               ))}
@@ -226,7 +226,7 @@ export function ChatView(props: ChatViewProps) {
         </button>
       )}
 
-      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-3 md:pb-6 pt-20 md:pt-24 px-2 md:px-20 safe-bottom">
+      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-3 md:pb-6 pt-20 md:pt-24 px-4 md:px-24 safe-bottom">
         {/* Mentor questions rise from just above the textbox, one at a time. */}
         {activeQuestions && (
           <ChatQuestionsForm
