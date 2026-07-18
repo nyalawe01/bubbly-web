@@ -302,10 +302,6 @@ export function ChatInput({
         </div>
       </div>
 
-      <div className={`text-center mt-1.5 text-[10px] md:text-[9px] ${colors.textSecondary} font-medium tracking-wide`}>
-        bubbly Core Integration
-      </div>
-
       <FilePreviewModal
         file={previewFile}
         isOpen={!!previewFile}

@@ -134,6 +134,24 @@ export function ChatView(props: ChatViewProps) {
     handleScroll();
   }, [messages, isGenerating]);
 
+  // On-screen keyboard detection (mobile browsers shrink the visual viewport,
+  // not the layout viewport, when the keyboard opens). Only the composer
+  // should stay pinned above the keyboard — everything else extra (the
+  // generator pills) hides so it doesn't fight the composer for the
+  // remaining space; it reappears once the keyboard closes.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    let maxHeight = vv.height;
+    const onResize = () => {
+      maxHeight = Math.max(maxHeight, vv.height);
+      setKeyboardOpen(maxHeight - vv.height > 120);
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden">
       <div
@@ -210,7 +228,7 @@ export function ChatView(props: ChatViewProps) {
         </button>
       )}
 
-      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-3 md:pb-6 pt-20 md:pt-24 px-6 md:px-24 safe-bottom">
+      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-6 pt-20 md:pt-24 px-6 md:px-24 safe-bottom">
         {/* Mentor questions rise from just above the textbox, one at a time. */}
         {activeQuestions && (
           <ChatQuestionsForm
@@ -251,9 +269,10 @@ export function ChatView(props: ChatViewProps) {
         />
 
         {/* Generator shortcuts, empty-chat only — pills reveal one by one from
-            below the composer once it's rendered. */}
-        {messages.length === 0 && !activeQuestions && (
-          <div className="mt-3 flex justify-center">
+            below the composer once it's rendered. Hidden while the on-screen
+            keyboard is up so the composer isn't fighting them for space. */}
+        {messages.length === 0 && !activeQuestions && !keyboardOpen && (
+          <div className="mt-3 mb-1 flex justify-center">
             <QuickActionPills
               onOpenQuiz={onOpenQuiz}
               onOpenFlashcards={onOpenFlashcards}
