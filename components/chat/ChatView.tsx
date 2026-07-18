@@ -46,12 +46,10 @@ interface ChatViewProps {
   onOpenExam: () => void;
   colors: any;
   logoSrc: string;
-  videoSrc: string;
   theme: string;
   chatBottomRef: React.RefObject<HTMLDivElement>;
   inputRef: React.RefObject<HTMLInputElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  videoRef: React.RefObject<HTMLVideoElement>;
 }
 
 const QUICK_ACTIONS = [
@@ -99,12 +97,10 @@ export function ChatView(props: ChatViewProps) {
     onOpenExam,
     colors,
     logoSrc,
-    videoSrc,
     theme,
     chatBottomRef,
     inputRef,
     fileInputRef,
-    videoRef,
   } = props;
 
   const { t } = useI18n();
@@ -156,43 +152,19 @@ export function ChatView(props: ChatViewProps) {
             {/* Curated, theme-aware illustration vignette behind the hero. */}
             <ArtLayer surface="chat" hero />
 
-            {/*
-              FIX: was `w-32 md:w-40 h-32 md:h-40` — a hard jump between exactly
-              two sizes. Anything in between (iPad at 768-1024px, small
-              laptops) got whichever breakpoint was "closest" instead of a
-              size actually tailored to it. `.fluid-hero-media` (globals.css)
-              uses clamp(6rem, 16vw, 10rem) so it scales continuously across
-              every viewport width instead of jumping.
-            */}
-            {/* Seamless hero: no card, no shadow, no rounded frame — the blend mode drops
-                the video's flat background so it sits directly on the page background. */}
-            <div className="fluid-hero-media relative animate-in zoom-in-95 duration-500">
-              <video
-                ref={videoRef}
-                src={videoSrc}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className={`w-full h-full object-contain object-center transition-opacity duration-500 ${
-                  theme === "dark" ? "mix-blend-screen opacity-90" : "mix-blend-multiply opacity-80"
-                }`}
-              />
-            </div>
-
-            <h1 className="text-2xl md:text-3xl font-medium tracking-tight relative z-10 px-4">
+            <h1 className="text-xl md:text-2xl font-medium tracking-tight relative z-10 px-4">
               {t("chat.explore")}
             </h1>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-3 w-full max-w-3xl mt-4 relative z-10 px-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-2.5 w-full max-w-2xl mt-3 relative z-10 px-2">
               {QUICK_ACTIONS.map(({ key, icon: Icon }, i) => (
                 <Reveal key={key} delay={i * 0.05}>
                   <button
                     onClick={actionHandlers[key]}
-                    className={`icon-motion w-full p-3 md:p-4 ${colors.bgCard} border ${colors.borderBase} rounded-2xl ${colors.bgHover} flex flex-col items-center gap-2 shadow-sm`}
+                    className={`icon-motion w-full p-2.5 md:p-3 ${colors.bgCard} border ${colors.borderBase} rounded-xl ${colors.bgHover} flex flex-col items-center gap-1.5 shadow-sm`}
                   >
-                    <IconChip icon={Icon} size={20} boxScale={2.2} className={`border ${colors.borderBase} shadow-sm`} />
-                    <span className="text-[10px] md:text-sm font-medium text-center leading-tight">{actionLabels[key]}</span>
+                    <IconChip icon={Icon} size={16} boxScale={2.2} className={`border ${colors.borderBase} shadow-sm`} />
+                    <span className="text-[9px] md:text-xs font-medium text-center leading-tight">{actionLabels[key]}</span>
                   </button>
                 </Reveal>
               ))}

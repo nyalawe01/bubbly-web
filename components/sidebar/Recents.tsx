@@ -13,14 +13,17 @@ interface RecentsProps {
   onDelete: (chatId: string) => void;
   onShare: (chat: any) => void;
   colors: any;
+  theme: string;
 }
 
-export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onDelete, onShare, colors }: RecentsProps) {
+export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onDelete, onShare, colors, theme }: RecentsProps) {
   const [open, setOpen] = useState(true);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const { t } = useI18n();
   const hasChats = Object.values(chats).some((arr) => arr.length > 0);
+  // Chat names go pure white in Dark theme only (Light theme keeps normal contrast).
+  const darkWhite = theme === "dark";
 
   const startRename = (chat: any) => {
     setRenamingId(chat.id);
@@ -38,11 +41,11 @@ export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onD
         onClick={() => setOpen((v) => !v)}
         className={`nav-row w-full flex items-center justify-between px-1 mb-1 group`}
       >
-        <span className={`text-[13px] font-semibold ${colors.textSecondary} uppercase tracking-wider`}>
+        <span className={`text-[11px] font-semibold ${colors.textSecondary} uppercase tracking-wider`}>
           {t("nav.recents")}
         </span>
         <ChevronDown
-          size={16}
+          size={14}
           className={`${colors.textSecondary} transition-transform duration-200 ${open ? "" : "-rotate-90"}`}
         />
       </button>
@@ -50,17 +53,17 @@ export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onD
       {open && (
         <>
           {!hasChats ? (
-            <div className={`px-3 py-2 text-[13px] ${colors.textSecondary} leading-relaxed`}>
+            <div className={`px-3 py-2 text-[12px] ${colors.textSecondary} leading-relaxed`}>
               No chat history yet.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {Object.entries(chats).map(([category, chatList]) => {
                 if (chatList.length === 0) return null;
                 return (
                   <div key={category}>
-                    <div className={`text-[12px] font-medium ${colors.textSecondary} uppercase tracking-wider mb-1 px-1 opacity-70 flex items-center gap-1`}>
-                      {category === "Pinned" && <Pin size={10} />}
+                    <div className={`text-[10px] font-medium ${colors.textSecondary} uppercase tracking-wider mb-1 px-1 opacity-70 flex items-center gap-1`}>
+                      {category === "Pinned" && <Pin size={9} />}
                       {category}
                     </div>
                     <div className="space-y-0.5">
@@ -84,14 +87,15 @@ export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onD
                                   if (e.key === "Escape") setRenamingId(null);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className={`flex-1 min-w-0 text-[15px] leading-snug px-3 py-2 rounded-lg bg-transparent outline-none ${colors.textPrimary}`}
+                                className={`flex-1 min-w-0 text-[13px] leading-snug px-2.5 py-1.5 rounded-lg bg-transparent outline-none ${colors.textPrimary}`}
                               />
                             ) : (
                               <button
                                 onClick={() => onLoadChat(chat)}
-                                className={`flex-1 min-w-0 text-left truncate text-[15px] leading-snug px-3 py-2 ${
+                                className={`flex-1 min-w-0 text-left truncate text-[13px] leading-snug px-2.5 py-1.5 ${
                                   currentChatId === chat.id ? colors.textPrimary : colors.textSecondary
                                 }`}
+                                style={darkWhite ? { color: "#fff" } : undefined}
                               >
                                 {chat.title}
                               </button>

@@ -70,7 +70,7 @@ export function AIMessage({
             ) : (
               <div
                 key={i}
-                className={`prose prose-base md:prose-lg max-w-none leading-relaxed ai-prose ${
+                className={`prose prose-sm md:prose-base max-w-none leading-relaxed ai-prose ${
                   theme === "dark" ? "dark:prose-invert prose-zinc" : "prose-zinc"
                 }`}
               >
@@ -94,16 +94,16 @@ export function AIMessage({
         {/* MENTOR MODE form: a pending question set the student can open, or a done marker. */}
         {message.questions?.questions?.length > 0 &&
           (questionsAnswered ? (
-            <div className={`mt-3 inline-flex items-center gap-2 text-xs ${colors.textSecondary}`}>
-              <CheckCircle2 size={15} className="text-emerald-500" />
+            <div className={`mt-2.5 inline-flex items-center gap-1.5 text-[11px] ${colors.textSecondary}`}>
+              <CheckCircle2 size={13} className="text-emerald-500" />
               Answers submitted
             </div>
           ) : (
             <button
               onClick={onOpenQuestions}
-              className={`mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border ${colors.borderBase} ${colors.bgCard} ${colors.bgHover} shadow-sm text-sm font-medium transition-all hover:-translate-y-0.5`}
+              className={`mt-2.5 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${colors.borderBase} ${colors.bgCard} ${colors.bgHover} shadow-sm text-[12px] font-medium transition-all hover:-translate-y-0.5`}
             >
-              <ClipboardList size={16} />
+              <ClipboardList size={14} />
               Answer a few questions
             </button>
           ))}
@@ -123,29 +123,29 @@ export function AIMessage({
         {message.asset && (
           <div
             onClick={() => onOpenAsset(message.asset)}
-            className={`mt-4 p-3 md:p-4 rounded-xl border ${colors.borderBase} ${colors.bgCard} ${colors.bgHover} cursor-pointer flex items-center justify-between shadow-sm transition-all hover:-translate-y-0.5 group`}
+            className={`mt-3 p-2.5 md:p-3 rounded-xl border ${colors.borderBase} ${colors.bgCard} ${colors.bgHover} cursor-pointer flex items-center justify-between shadow-sm transition-all hover:-translate-y-0.5 group`}
           >
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className={`p-2 md:p-3 rounded-lg bg-zinc-500/10`}>
+            <div className="flex items-center gap-2.5 md:gap-3">
+              <div className={`p-1.5 md:p-2 rounded-lg bg-zinc-500/10`}>
                 {message.asset.type === "quiz" ? (
-                  <BrainCircuit size={18} className="md:w-[24px] md:h-[24px] text-zinc-500" />
+                  <BrainCircuit size={16} className="md:w-[20px] md:h-[20px] text-zinc-500" />
                 ) : message.asset.type === "slides" ? (
-                  <MonitorPlay size={18} className="md:w-[24px] md:h-[24px] text-zinc-500" />
+                  <MonitorPlay size={16} className="md:w-[20px] md:h-[20px] text-zinc-500" />
                 ) : (
-                  <ImageIcon size={18} className="md:w-[24px] md:h-[24px] text-zinc-500" />
+                  <ImageIcon size={16} className="md:w-[20px] md:h-[20px] text-zinc-500" />
                 )}
               </div>
               <div>
-                <h4 className="font-semibold text-sm md:text-[15px]">{message.asset.title}</h4>
-                <p className={`text-[10px] md:text-xs ${colors.textSecondary} mt-0.5`}>
+                <h4 className="font-semibold text-[13px] md:text-[14px]">{message.asset.title}</h4>
+                <p className={`text-[9px] md:text-[11px] ${colors.textSecondary} mt-0.5`}>
                   {message.asset.metadata}
                 </p>
               </div>
             </div>
             <div
-              className={`w-7 h-7 md:w-8 md:h-8 rounded-full ${colors.bgInput} flex items-center justify-center group-hover:bg-zinc-800 group-hover:text-white dark:group-hover:bg-zinc-200 dark:group-hover:text-black transition-colors`}
+              className={`w-6 h-6 md:w-7 md:h-7 rounded-full ${colors.bgInput} flex items-center justify-center group-hover:bg-zinc-800 group-hover:text-white dark:group-hover:bg-zinc-200 dark:group-hover:text-black transition-colors`}
             >
-              <ArrowRight size={14} className="md:w-[16px] md:h-[16px]" />
+              <ArrowRight size={13} className="md:w-[14px] md:h-[14px]" />
             </div>
           </div>
         )}
@@ -155,15 +155,15 @@ export function AIMessage({
         {!isGenerating && message.sources && message.sources.length > 0 && (
           <button
             onClick={openSources}
-            className={`mt-3 inline-flex items-center gap-1 text-xs font-medium ${colors.textSecondary} hover:${colors.textPrimary} transition-colors`}
+            className={`mt-2.5 inline-flex items-center gap-1 text-[11px] font-medium ${colors.textSecondary} hover:${colors.textPrimary} transition-colors`}
           >
             Referenced from {message.sources.length} source{message.sources.length > 1 ? "s" : ""}
-            <ChevronRight size={12} />
+            <ChevronRight size={11} />
           </button>
         )}
 
         {!isGenerating && message.text && (
-          <div className={`flex flex-wrap items-center gap-1 mt-3 pt-3 border-t ${colors.borderBase}`}>
+          <div className={`flex flex-wrap items-center gap-1 mt-2.5 pt-2.5 border-t ${colors.borderBase}`}>
             <IconButton
               icon={AnimatedCopyIcon}
               iconProps={{ copied }}

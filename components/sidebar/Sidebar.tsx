@@ -94,7 +94,12 @@ export function Sidebar({
   const { t } = useI18n();
 
   const showContent = isOpen || isMobileMenuOpen;
-  const sidebarWidth = isMobileMenuOpen ? "w-[86vw] max-w-[340px]" : isOpen ? "w-80" : "w-[68px]";
+  const sidebarWidth = isMobileMenuOpen ? "w-[80vw] max-w-[280px]" : isOpen ? "w-60" : "w-[56px]";
+  // Nav links, chat names, and notebook names go pure white in Dark theme only —
+  // Light theme keeps its normal theme-driven text color (white-on-white there
+  // would be unreadable). Inline style/icon color wins unambiguously over the
+  // bgActive/bgHover classes' own baked-in text colors.
+  const darkWhite = theme === "dark";
 
   const handleSignOut = async () => {
     setIsProfileMenuOpen(false);
@@ -133,10 +138,10 @@ export function Sidebar({
     `}
     >
       {/* Header — wordmark only (no logo image), no bottom border line. */}
-      <div className="flex items-center justify-between px-3.5 h-[56px]">
+      <div className="flex items-center justify-between px-3 h-[48px]">
         <div className={`flex items-center overflow-hidden ${!showContent ? "opacity-0 w-0" : "opacity-100 w-auto"}`}>
           <span
-            className={`text-[23px] font-medium tracking-tight truncate ${colors.textPrimary}`}
+            className={`text-[18px] font-medium tracking-tight truncate ${colors.textPrimary}`}
             style={{ opacity: 0.92, fontFamily: "var(--font-display, inherit)" }}
           >
             bubbly
@@ -146,47 +151,54 @@ export function Sidebar({
           onClick={onToggle}
           className={`icon-motion hidden md:block p-1.5 rounded-md ${colors.bgHover} ${colors.textSecondary} ${isOpen ? "ml-auto" : "mx-auto"}`}
         >
-          {isOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+          {isOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
         </button>
         <button onClick={onCloseMobile} className={`icon-motion md:hidden p-1.5 rounded-md ${colors.textSecondary}`}>
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
       {/* Fixed New Chat action — pinned, never scrolls, never shown "active". */}
-      <div className="px-2 pb-2">
+      <div className="px-2 pb-1.5">
         <button
           onClick={onStartNewChat}
-          className={`icon-motion w-full flex items-center gap-3 rounded-xl transition-colors ${colors.textPrimary} ${colors.bgHover} border ${colors.borderBase} ${
-            showContent ? "px-3 py-2.5" : "justify-center py-3"
+          className={`icon-motion w-full flex items-center gap-2.5 rounded-lg transition-colors ${colors.textPrimary} ${colors.bgHover} border ${colors.borderBase} ${
+            showContent ? "px-2.5 py-2" : "justify-center py-2"
           }`}
         >
-          <Plus size={20} className="flex-shrink-0" />
-          {showContent && <span className="text-[16px] font-medium truncate">{t("nav.newChat")}</span>}
+          <Plus size={16} className="flex-shrink-0" />
+          {showContent && <span className="text-[13px] font-medium truncate">{t("nav.newChat")}</span>}
         </button>
       </div>
 
       {/* Single unified scroll region: tools + Notebooks + Recents scroll together. */}
-      <div className="px-2 flex-1 overflow-y-auto hide-scrollbar space-y-4 pb-2">
-        <div className="space-y-1">
-          {toolItems.map(({ key, label, icon: Icon, onClick }) => (
-            <button
-              key={key}
-              onClick={onClick}
-              className={`nav-row w-full flex items-center gap-3 rounded-xl transition-colors ${
-                showContent ? "px-3 py-2.5" : "justify-center py-3"
-              } ${activeView === key ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}
-            >
-              <Icon size={20} className="flex-shrink-0" />
-              {showContent && <span className="text-[16px] font-medium truncate">{label}</span>}
-            </button>
-          ))}
+      <div className="px-2 flex-1 overflow-y-auto hide-scrollbar space-y-3 pb-2">
+        <div className="space-y-0.5">
+          {toolItems.map(({ key, label, icon: Icon, onClick }) => {
+            const isActive = activeView === key;
+            return (
+              <button
+                key={key}
+                onClick={onClick}
+                className={`nav-row w-full flex items-center gap-2.5 rounded-lg transition-colors ${
+                  showContent ? "px-2.5 py-1.5" : "justify-center py-2"
+                } ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}
+              >
+                <Icon size={16} className="flex-shrink-0" color={darkWhite ? "#ffffff" : undefined} />
+                {showContent && (
+                  <span className="text-[13px] font-medium truncate" style={darkWhite ? { color: "#fff" } : undefined}>
+                    {label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {showContent && (
           <>
             <div>
-              <div className={`text-[13px] font-semibold ${colors.textSecondary} uppercase tracking-wider mb-2 px-1`}>
+              <div className={`text-[11px] font-semibold ${colors.textSecondary} uppercase tracking-wider mb-1.5 px-1`}>
                 {t("nav.notebooks")}
               </div>
               <Notebooks
@@ -197,6 +209,7 @@ export function Sidebar({
                 onDelete={onDeleteAsset}
                 onShare={onShareAsset}
                 colors={colors}
+                theme={theme}
               />
             </div>
 
@@ -209,6 +222,7 @@ export function Sidebar({
               onDelete={onDeleteChat}
               onShare={onShareChat}
               colors={colors}
+              theme={theme}
             />
           </>
         )}
@@ -219,17 +233,17 @@ export function Sidebar({
           <div className={`absolute bottom-[60px] left-2 w-[200px] ${colors.bgCard} border ${colors.borderBase} rounded-xl p-1 z-50 shadow-2xl animate-in slide-in-from-bottom-2 duration-150`}>
             <button
               onClick={() => { setIsProfileMenuOpen(false); onOpenSettings(); }}
-              className={`icon-motion w-full flex items-center gap-3 px-3 py-2 text-sm ${colors.bgHover} rounded-lg ${colors.textPrimary} font-medium`}
+              className={`icon-motion w-full flex items-center gap-2.5 px-2.5 py-1.5 text-[13px] ${colors.bgHover} rounded-lg ${colors.textPrimary} font-medium`}
             >
-              <Settings2 size={15} /> Settings
+              <Settings2 size={13} /> Settings
             </button>
             <div className={`h-px w-full ${colors.bgInput} my-1`} />
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="icon-motion w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-lg font-medium disabled:opacity-50"
+              className="icon-motion w-full flex items-center gap-2.5 px-2.5 py-1.5 text-[13px] text-red-500 hover:bg-red-500/10 rounded-lg font-medium disabled:opacity-50"
             >
-              <LogOut size={15} /> {signingOut ? "Signing out…" : "Sign Out"}
+              <LogOut size={13} /> {signingOut ? "Signing out…" : "Sign Out"}
             </button>
           </div>
         )}
@@ -238,7 +252,7 @@ export function Sidebar({
           onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
           className={`icon-motion w-full flex items-center gap-2 p-1.5 rounded-xl ${colors.bgHover} transition-colors`}
         >
-          <div className={`w-7 h-7 rounded-full ${colors.btnPrimary} flex items-center justify-center font-bold text-xs border ${colors.borderBase} flex-shrink-0 overflow-hidden`}>
+          <div className={`w-6 h-6 rounded-full ${colors.btnPrimary} flex items-center justify-center font-bold text-[10px] border ${colors.borderBase} flex-shrink-0 overflow-hidden`}>
             {user?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
@@ -248,11 +262,11 @@ export function Sidebar({
           </div>
           {showContent && (
             <div className="text-left flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{user?.name || "User"}</div>
-              <div className={`text-xs ${colors.textSecondary} truncate`}>{user?.email || ""}</div>
+              <div className="text-[13px] font-medium truncate">{user?.name || "User"}</div>
+              <div className={`text-[11px] ${colors.textSecondary} truncate`}>{user?.email || ""}</div>
             </div>
           )}
-          {showContent && <ChevronDown size={16} className={`${colors.textSecondary} flex-shrink-0`} />}
+          {showContent && <ChevronDown size={14} className={`${colors.textSecondary} flex-shrink-0`} />}
         </button>
       </div>
     </div>

@@ -12,6 +12,7 @@ interface NotebooksProps {
   onDelete: (asset: any) => void;
   onShare: (asset: any) => void;
   colors: any;
+  theme: string;
 }
 
 const ICONS: Record<string, any> = {
@@ -41,15 +42,17 @@ function subtitle(a: any): string {
   return a.type === "guide" ? "Study guide" : "Summary";
 }
 
-export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onShare, colors }: NotebooksProps) {
+export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onShare, colors, theme }: NotebooksProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
+  // Notebook names go pure white in Dark theme only (Light theme keeps normal contrast).
+  const darkWhite = theme === "dark";
 
   // Pinned first, otherwise keep the incoming (newest-first) order.
   const ordered = useMemo(() => [...assets].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)), [assets]);
 
   if (!ordered.length) {
-    return <div className={`px-3 py-2 text-[13px] ${colors.textSecondary}`}>No assets generated yet.</div>;
+    return <div className={`px-3 py-2 text-[12px] ${colors.textSecondary}`}>No assets generated yet.</div>;
   }
 
   const startRename = (asset: any) => {
@@ -62,7 +65,7 @@ export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onSh
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       {ordered.map((asset) => {
         const Icon = ICONS[asset.type] || FileText;
         const generating = asset.status === "generating";
@@ -73,10 +76,10 @@ export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onSh
             <button
               onClick={() => onOpenAsset(asset)}
               disabled={generating || isRenaming}
-              className={`flex-1 min-w-0 text-left flex items-center gap-3 p-2.5 rounded-lg ${generating ? "opacity-70 cursor-default" : ""}`}
+              className={`flex-1 min-w-0 text-left flex items-center gap-2 p-1.5 rounded-lg ${generating ? "opacity-70 cursor-default" : ""}`}
             >
-              <div className={`p-2 rounded-md flex-shrink-0 ${COLORS[asset.type] || "bg-emerald-500/10 text-emerald-400"}`}>
-                {generating ? <Loader2 size={16} className="animate-spin" /> : failed ? <AlertCircle size={16} className="text-red-500" /> : <Icon size={16} />}
+              <div className={`p-1.5 rounded-md flex-shrink-0 ${COLORS[asset.type] || "bg-emerald-500/10 text-emerald-400"}`}>
+                {generating ? <Loader2 size={13} className="animate-spin" /> : failed ? <AlertCircle size={13} className="text-red-500" /> : <Icon size={13} />}
               </div>
               <div className="flex-1 min-w-0">
                 {isRenaming ? (
@@ -90,12 +93,17 @@ export function Notebooks({ assets, onOpenAsset, onPin, onRename, onDelete, onSh
                       if (e.key === "Escape") setRenamingId(null);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`w-full text-[15px] font-medium leading-snug bg-transparent outline-none ${colors.textPrimary}`}
+                    className={`w-full text-[13px] font-medium leading-snug bg-transparent outline-none ${colors.textPrimary}`}
                   />
                 ) : (
-                  <div className={`text-[15px] font-medium ${colors.textPrimary} truncate leading-snug`}>{asset.title}</div>
+                  <div
+                    className={`text-[13px] font-medium ${colors.textPrimary} truncate leading-snug`}
+                    style={darkWhite ? { color: "#fff" } : undefined}
+                  >
+                    {asset.title}
+                  </div>
                 )}
-                <div className={`text-[12px] ${failed ? "text-red-500" : colors.textSecondary} truncate mt-0.5`}>{subtitle(asset)}</div>
+                <div className={`text-[11px] ${failed ? "text-red-500" : colors.textSecondary} truncate mt-0.5`}>{subtitle(asset)}</div>
               </div>
             </button>
             {!isRenaming && (

@@ -40,17 +40,20 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className={`flex h-[600px] w-full max-w-[820px] overflow-hidden rounded-2xl border ${colors.borderBase} ${colors.bgCard} shadow-2xl`}>
+      {/* max-h keeps this modal always floating with margin from top/bottom on any
+          screen size, instead of a fixed pixel height that touched the viewport edges
+          on shorter screens. */}
+      <div onClick={(e) => e.stopPropagation()} className={`flex w-full max-w-[720px] max-h-[85vh] overflow-hidden rounded-2xl border ${colors.borderBase} ${colors.bgCard} shadow-2xl`}>
         {/* Sidebar */}
-        <aside className={`w-56 shrink-0 ${colors.bgSidebar} p-4`}>
-          <h2 className={`px-3 pb-4 pt-2 text-lg font-semibold ${colors.textPrimary}`}>Settings</h2>
-          <nav className="space-y-1">
+        <aside className={`w-44 shrink-0 ${colors.bgSidebar} p-3`}>
+          <h2 className={`px-2.5 pb-3 pt-1.5 text-[15px] font-semibold ${colors.textPrimary}`}>Settings</h2>
+          <nav className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = tab === item.id;
               return (
-                <button key={item.id} onClick={() => setTab(item.id)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>
-                  <Icon className="h-4 w-4" /> {item.label}
+                <button key={item.id} onClick={() => setTab(item.id)} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>
+                  <Icon className="h-3.5 w-3.5" /> {item.label}
                 </button>
               );
             })}
@@ -58,29 +61,29 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
         </aside>
 
         {/* Content */}
-        <section className={`relative flex-1 overflow-y-auto p-8 ${colors.bgApp}`}>
-          <button onClick={onClose} className={`absolute right-6 top-6 ${colors.textSecondary} hover:${colors.textPrimary}`}><X className="h-5 w-5" /></button>
-          <div className="pr-8">
+        <section className={`relative flex-1 overflow-y-auto p-5 md:p-6 ${colors.bgApp}`}>
+          <button onClick={onClose} className={`absolute right-4 top-4 ${colors.textSecondary} hover:${colors.textPrimary}`}><X className="h-4 w-4" /></button>
+          <div className="pr-6">
             {tab === "general" && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
-                  <p className={`mb-3 text-sm font-medium ${colors.textSecondary}`}>{t("settings.theme")}</p>
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  <p className={`mb-2 text-[12px] font-medium ${colors.textSecondary}`}>{t("settings.theme")}</p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {themeOptions.map((option) => {
                       const active = preference === option.id;
                       return (
                         <button
                           key={option.id}
                           onClick={() => setPreference(option.id)}
-                          className={`icon-motion flex flex-col items-center gap-2 rounded-xl border py-5 text-sm font-medium transition-all ${active ? colors.bgActive : `${colors.bgInput} ${colors.bgHover}`}`}
+                          className={`icon-motion flex flex-col items-center gap-1.5 rounded-xl border py-3.5 text-[12px] font-medium transition-all ${active ? colors.bgActive : `${colors.bgInput} ${colors.bgHover}`}`}
                         >
                           {option.swatch ? (
                             <span
-                              className="h-5 w-5 rounded-full border border-black/10"
+                              className="h-4 w-4 rounded-full border border-black/10"
                               style={{ backgroundColor: option.swatch }}
                             />
                           ) : (
-                            <Monitor className="h-5 w-5" />
+                            <Monitor className="h-4 w-4" />
                           )}
                           {option.label}
                         </button>
@@ -90,14 +93,14 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                 </div>
 
                 <div>
-                  <p className={`mb-3 text-sm font-medium ${colors.textSecondary}`}>{t("settings.interfaceFont")}</p>
+                  <p className={`mb-2 text-[12px] font-medium ${colors.textSecondary}`}>{t("settings.interfaceFont")}</p>
                   <div className={`inline-flex rounded-full border ${colors.borderBase} ${colors.bgInput} p-0.5`}>
                     {(["sans", "serif"] as const).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFontPref(f)}
                         style={{ fontFamily: f === "serif" ? "var(--font-serif)" : "var(--font-sans)" }}
-                        className={`rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${
+                        className={`rounded-full px-4 py-1 text-[12px] font-medium transition-colors ${
                           fontPref === f ? colors.btnPrimary : `${colors.textSecondary} ${colors.bgHover}`
                         }`}
                       >
@@ -108,16 +111,16 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <p className={`text-sm font-medium ${colors.textSecondary}`}>{t("settings.language")}</p>
+                  <p className={`text-[12px] font-medium ${colors.textSecondary}`}>{t("settings.language")}</p>
                   <div className="relative">
-                    <button onClick={() => setLangOpen(!langOpen)} className={`flex items-center gap-2 rounded-full border ${colors.borderBase} ${colors.bgInput} px-4 py-2 text-sm font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>
-                      {LANG_LABELS[lang]} <AnimatedChevron size={16} className="text-neutral-500" open={langOpen} />
+                    <button onClick={() => setLangOpen(!langOpen)} className={`flex items-center gap-1.5 rounded-full border ${colors.borderBase} ${colors.bgInput} px-3 py-1.5 text-[12px] font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>
+                      {LANG_LABELS[lang]} <AnimatedChevron size={14} className="text-neutral-500" open={langOpen} />
                     </button>
                     {langOpen && (
-                      <div className={`absolute right-0 z-10 mt-2 w-56 max-h-72 overflow-y-auto rounded-xl border ${colors.borderBase} ${colors.bgCard} py-1 shadow-xl`}>
+                      <div className={`absolute right-0 z-10 mt-2 w-48 max-h-60 overflow-y-auto rounded-xl border ${colors.borderBase} ${colors.bgCard} py-1 shadow-xl`}>
                         {SUPPORTED_LANGS.map((code) => (
-                          <button key={code} onClick={() => { setLang(code); setLangOpen(false); }} className={`nav-row flex w-full items-center justify-between px-4 py-2 text-sm ${colors.textPrimary} ${colors.bgHover}`}>
-                            {LANG_LABELS[code]} {lang === code && <Check className="h-4 w-4 text-neutral-500" />}
+                          <button key={code} onClick={() => { setLang(code); setLangOpen(false); }} className={`nav-row flex w-full items-center justify-between px-3 py-1.5 text-[12px] ${colors.textPrimary} ${colors.bgHover}`}>
+                            {LANG_LABELS[code]} {lang === code && <Check className="h-3.5 w-3.5 text-neutral-500" />}
                           </button>
                         ))}
                       </div>
@@ -129,63 +132,63 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
 
             {tab === "profile" && (
               <div>
-                <div className={`border-b ${colors.borderBase} py-4 flex items-center justify-between`}>
-                  <span className={`text-sm font-medium ${colors.textPrimary}`}>Name</span>
-                  <span className={`text-sm ${colors.textSecondary}`}>{user?.name || "Not set"}</span>
+                <div className={`border-b ${colors.borderBase} py-3 flex items-center justify-between`}>
+                  <span className={`text-[12px] font-medium ${colors.textPrimary}`}>Name</span>
+                  <span className={`text-[12px] ${colors.textSecondary}`}>{user?.name || "Not set"}</span>
                 </div>
-                <div className={`border-b ${colors.borderBase} py-4 flex items-center justify-between`}>
-                  <span className={`text-sm font-medium ${colors.textPrimary}`}>Email address</span>
-                  <span className={`text-sm ${colors.textSecondary}`}>{user?.email || "Not set"}</span>
+                <div className={`border-b ${colors.borderBase} py-3 flex items-center justify-between`}>
+                  <span className={`text-[12px] font-medium ${colors.textPrimary}`}>Email address</span>
+                  <span className={`text-[12px] ${colors.textSecondary}`}>{user?.email || "Not set"}</span>
                 </div>
-                <div className={`border-b ${colors.borderBase} py-4 flex items-center justify-between`}>
-                  <span className={`text-sm font-medium ${colors.textPrimary}`}>Phone number</span>
-                  <span className={`text-sm ${colors.textSecondary}`}>-</span>
+                <div className={`border-b ${colors.borderBase} py-3 flex items-center justify-between`}>
+                  <span className={`text-[12px] font-medium ${colors.textPrimary}`}>Phone number</span>
+                  <span className={`text-[12px] ${colors.textSecondary}`}>-</span>
                 </div>
-                <div className={`border-b ${colors.borderBase} py-4 flex items-center justify-between`}>
-                  <span className={`text-sm font-medium ${colors.textPrimary}`}>Log out of all devices</span>
-                  <button onClick={onSignOut} className="rounded-full border border-red-300 px-5 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Log out</button>
+                <div className={`border-b ${colors.borderBase} py-3 flex items-center justify-between`}>
+                  <span className={`text-[12px] font-medium ${colors.textPrimary}`}>Log out of all devices</span>
+                  <button onClick={onSignOut} className="rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Log out</button>
                 </div>
-                <div className="py-4 flex items-center justify-between">
-                  <span className="text-sm font-medium text-red-500">Delete account</span>
-                  <button className="rounded-full border border-red-300 px-5 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete</button>
+                <div className="py-3 flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-red-500">Delete account</span>
+                  <button className="rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete</button>
                 </div>
               </div>
             )}
 
             {tab === "data" && (
-              <div className="space-y-6">
-                <div className={`border-b ${colors.borderBase} pb-4`}>
-                  <p className={`text-sm font-medium ${colors.textPrimary}`}>Improve the model for everyone</p>
-                  <p className={`mt-1 text-sm ${colors.textSecondary}`}>Allow your content to be used to train our models and improve our services.</p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <button className="relative h-6 w-11 rounded-full bg-neutral-300 dark:bg-neutral-700"><span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-all dark:bg-neutral-900"></span></button>
-                    <span className={`text-sm ${colors.textSecondary}`}>Off</span>
+              <div className="space-y-4">
+                <div className={`border-b ${colors.borderBase} pb-3`}>
+                  <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Improve the model for everyone</p>
+                  <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Allow your content to be used to train our models and improve our services.</p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button className="relative h-5 w-9 rounded-full bg-neutral-300 dark:bg-neutral-700"><span className="absolute left-1 top-1 h-3 w-3 rounded-full bg-white transition-all dark:bg-neutral-900"></span></button>
+                    <span className={`text-[12px] ${colors.textSecondary}`}>Off</span>
                   </div>
                 </div>
-                <div className={`border-b ${colors.borderBase} pb-4`}>
-                  <p className={`text-sm font-medium ${colors.textPrimary}`}>Shared links</p>
-                  <p className={`mt-1 text-sm ${colors.textSecondary}`}>Export your data including account information and chat history.</p>
-                  <button className={`mt-3 rounded-full border ${colors.borderBase} ${colors.bgInput} px-5 py-1.5 text-sm font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>Export data</button>
+                <div className={`border-b ${colors.borderBase} pb-3`}>
+                  <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Shared links</p>
+                  <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Export your data including account information and chat history.</p>
+                  <button className={`mt-2.5 rounded-full border ${colors.borderBase} ${colors.bgInput} px-4 py-1 text-[12px] font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>Export data</button>
                 </div>
                 <div>
-                  <p className={`text-sm font-medium ${colors.textPrimary}`}>Delete all chats</p>
-                  <button className="mt-2 rounded-full border border-red-300 px-5 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete all</button>
+                  <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Delete all chats</p>
+                  <button className="mt-1.5 rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete all</button>
                 </div>
               </div>
             )}
 
             {tab === "about" && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full ${colors.bgInput} text-lg font-bold ${colors.textPrimary}`}>b</div>
-                  <div><p className={`text-lg font-semibold ${colors.textPrimary}`}>bubbly</p><p className={`text-sm ${colors.textSecondary}`}>Version 1.0.0</p></div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${colors.bgInput} text-[15px] font-bold ${colors.textPrimary}`}>b</div>
+                  <div><p className={`text-[14px] font-semibold ${colors.textPrimary}`}>bubbly</p><p className={`text-[12px] ${colors.textSecondary}`}>Version 1.0.0</p></div>
                 </div>
-                <div className={`border-b ${colors.borderBase} pb-4`}>
-                  <p className={`text-sm ${colors.textSecondary}`}>AI-powered academic platform for smarter learning.</p>
+                <div className={`border-b ${colors.borderBase} pb-3`}>
+                  <p className={`text-[12px] ${colors.textSecondary}`}>AI-powered academic platform for smarter learning.</p>
                 </div>
-                <div className="flex flex-col gap-3">
-                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-4 py-3 text-sm ${colors.textPrimary} hover:${colors.bgHover}`}>Terms of Use <span className={`rounded-full ${colors.bgInput} px-3 py-0.5 text-xs ${colors.textSecondary}`}>View</span></button>
-                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-4 py-3 text-sm ${colors.textPrimary} hover:${colors.bgHover}`}>Privacy Policy <span className={`rounded-full ${colors.bgInput} px-3 py-0.5 text-xs ${colors.textSecondary}`}>View</span></button>
+                <div className="flex flex-col gap-2">
+                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Terms of Use <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
+                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Privacy Policy <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
                 </div>
               </div>
             )}

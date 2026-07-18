@@ -158,7 +158,6 @@ export default function Workspace() {
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const uploadPopupRef = useRef<HTMLDivElement>(null);
   const vaultUploadRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // ============================================
   // THEME (see components/theme/ThemeProvider.tsx — theme/colors sourced above)
@@ -173,11 +172,10 @@ export default function Workspace() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Only two logo/video asset variants exist (dark vs. light-surfaced); every
+  // Only two logo asset variants exist (dark vs. light-surfaced); every
   // non-dark theme (white/pink/blue/green/grey) is light-surfaced, so they all
   // share the light asset.
   const logoSrc = theme === "dark" ? "/logo.png" : "/logo2.png";
-  const videoSrc = theme === "dark" ? "/onboarding.mp4" : "/onboarding2.mp4";
 
   // ============================================
   // SAVED CHATS
@@ -1172,12 +1170,10 @@ export default function Workspace() {
           onOpenExam={() => setActiveModal("exam")}
           colors={colors}
           logoSrc={logoSrc}
-          videoSrc={videoSrc}
           theme={theme}
           chatBottomRef={chatBottomRef}
           inputRef={inputRef}
           fileInputRef={fileInputRef}
-          videoRef={videoRef}
         />
         </>
         )}
