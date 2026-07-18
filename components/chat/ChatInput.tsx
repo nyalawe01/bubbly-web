@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Plus, Mic, Square, Loader2, X,
   Zap, Gem, ImageIcon, FileText,
+  BrainCircuit, Layers, MonitorPlay, GraduationCap,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { AnimatedSendIcon } from "@/components/ui/icons";
@@ -28,6 +29,11 @@ interface ChatInputProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onGoogleDriveClick?: () => void;
   onFileClick: (file: any) => void;
+  onOpenQuiz?: () => void;
+  onOpenFlashcards?: () => void;
+  onOpenSlides?: () => void;
+  onOpenSummary?: () => void;
+  onOpenExam?: () => void;
   colors: any;
   theme: string;
   inputRef: React.RefObject<HTMLInputElement>;
@@ -51,6 +57,11 @@ export function ChatInput({
   onStopRecording,
   onFileUpload,
   onGoogleDriveClick,
+  onOpenQuiz,
+  onOpenFlashcards,
+  onOpenSlides,
+  onOpenSummary,
+  onOpenExam,
   colors,
   theme,
   inputRef,
@@ -207,7 +218,7 @@ export function ChatInput({
               />
 
               {isUploadGridOpen && (
-                <div className={`absolute bottom-full left-0 mb-1.5 w-40 md:w-48 ${colors.bgCard} border ${colors.borderBase} rounded-xl p-1 z-50 shadow-2xl animate-in slide-in-from-bottom-2`}>
+                <div className={`absolute bottom-full left-0 mb-1.5 w-48 md:w-52 ${colors.bgCard} border ${colors.borderBase} rounded-xl p-1 z-50 shadow-2xl animate-in slide-in-from-bottom-2`}>
                   <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => { onFileUpload(e); setIsUploadGridOpen(false); }} />
 
                   <button
@@ -229,6 +240,37 @@ export function ChatInput({
                     </svg>
                     Google Drive
                   </button>
+
+                  {(onOpenQuiz || onOpenFlashcards || onOpenSlides || onOpenSummary || onOpenExam) && (
+                    <>
+                      <div className={`h-px my-1 mx-1 ${colors.bgInput}`} />
+                      {onOpenQuiz && (
+                        <button type="button" onClick={() => { setIsUploadGridOpen(false); onOpenQuiz(); }} className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}>
+                          <BrainCircuit size={14} className={colors.textSecondary} /> Quiz
+                        </button>
+                      )}
+                      {onOpenFlashcards && (
+                        <button type="button" onClick={() => { setIsUploadGridOpen(false); onOpenFlashcards(); }} className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}>
+                          <Layers size={14} className={colors.textSecondary} /> Flashcards
+                        </button>
+                      )}
+                      {onOpenSlides && (
+                        <button type="button" onClick={() => { setIsUploadGridOpen(false); onOpenSlides(); }} className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}>
+                          <MonitorPlay size={14} className={colors.textSecondary} /> Slides
+                        </button>
+                      )}
+                      {onOpenSummary && (
+                        <button type="button" onClick={() => { setIsUploadGridOpen(false); onOpenSummary(); }} className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}>
+                          <FileText size={14} className={colors.textSecondary} /> Summary
+                        </button>
+                      )}
+                      {onOpenExam && (
+                        <button type="button" onClick={() => { setIsUploadGridOpen(false); onOpenExam(); }} className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}>
+                          <GraduationCap size={14} className={colors.textSecondary} /> Exam Prep
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>

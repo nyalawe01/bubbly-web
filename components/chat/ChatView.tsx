@@ -1,14 +1,21 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
-import { BrainCircuit, FileText, MonitorPlay, Layers, GraduationCap, ArrowDown } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowDown } from "lucide-react";
 import { ChatInput } from "./ChatInput";
 import { ChatQuestionsForm } from "./ChatQuestionsForm";
 import { UserMessage } from "./UserMessage";
 import { AIMessage } from "./AIMessage";
-import { Reveal } from "@/components/ui/motion";
+import { QuickActionPills } from "./QuickActionPills";
 import { ArtLayer } from "@/components/ui/ArtLayer";
-import { IconChip } from "@/components/ui/IconChip";
 import { useI18n } from "@/components/i18n/I18nProvider";
+
+// Canvas/WASM-based — rendered client-only to avoid an SSR/hydration mismatch.
+const DotLottieReact = dynamic(
+  () => import("@lottiefiles/dotlottie-react").then((m) => m.DotLottieReact),
+  { ssr: false }
+);
+const HERO_LOTTIE_SRC = "https://lottie.host/a7719fd3-75b2-40a4-92bf-1393879984f6/s6oIomjnI3.lottie";
 
 interface ChatViewProps {
   messages: any[];
@@ -52,13 +59,7 @@ interface ChatViewProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
 }
 
-const QUICK_ACTIONS = [
-  { key: "quiz", label: "Generate Quiz", icon: BrainCircuit },
-  { key: "summary", label: "Generate Summary", icon: FileText },
-  { key: "flashcards", label: "Flashcards", icon: Layers },
-  { key: "slides", label: "Slide Deck", icon: MonitorPlay },
-  { key: "exam", label: "Exam Prep", icon: GraduationCap },
-] as const;
+const ACTION_KEYS = ["quiz", "flashcards", "slides", "summary", "exam"] as const;
 
 export function ChatView(props: ChatViewProps) {
   const {
@@ -104,14 +105,7 @@ export function ChatView(props: ChatViewProps) {
   } = props;
 
   const { t } = useI18n();
-  const actionHandlers: Record<(typeof QUICK_ACTIONS)[number]["key"], () => void> = {
-    quiz: onOpenQuiz,
-    summary: onOpenSummary,
-    flashcards: onOpenFlashcards,
-    slides: onOpenSlides,
-    exam: onOpenExam,
-  };
-  const actionLabels: Record<(typeof QUICK_ACTIONS)[number]["key"], string> = {
+  const actionLabels: Record<(typeof ACTION_KEYS)[number], string> = {
     quiz: t("nav.quiz"),
     summary: t("nav.summary"),
     flashcards: t("nav.flashcards"),
@@ -148,27 +142,17 @@ export function ChatView(props: ChatViewProps) {
         className="flex-1 overflow-y-auto px-4 md:px-20 pt-4 md:pt-6 pb-48 md:pb-56 hide-scrollbar scroll-smooth"
       >
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-5 md:space-y-6 mt-[-5vh] md:mt-[-10vh] animate-in fade-in relative">
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-2 md:space-y-3 mt-[-5vh] md:mt-[-10vh] animate-in fade-in relative">
             {/* Curated, theme-aware illustration vignette behind the hero. */}
             <ArtLayer surface="chat" hero />
+
+            <div className="w-[140px] h-[140px] md:w-[170px] md:h-[170px] relative z-10 -mb-2">
+              <DotLottieReact src={HERO_LOTTIE_SRC} loop autoplay style={{ width: "100%", height: "100%" }} />
+            </div>
 
             <h1 className="text-2xl md:text-2xl font-medium tracking-tight relative z-10 px-4">
               {t("chat.explore")}
             </h1>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-2.5 w-full max-w-2xl mt-3 relative z-10 px-2">
-              {QUICK_ACTIONS.map(({ key, icon: Icon }, i) => (
-                <Reveal key={key} delay={i * 0.05}>
-                  <button
-                    onClick={actionHandlers[key]}
-                    className={`icon-motion w-full p-3 md:p-3 ${colors.bgCard} border ${colors.borderBase} rounded-xl ${colors.bgHover} flex flex-col items-center gap-1.5 shadow-sm`}
-                  >
-                    <IconChip icon={Icon} size={18} boxScale={2.2} className={`border ${colors.borderBase} shadow-sm`} />
-                    <span className="text-[11px] md:text-xs font-medium text-center leading-tight">{actionLabels[key]}</span>
-                  </button>
-                </Reveal>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto space-y-6 md:space-y-10">
@@ -255,11 +239,32 @@ export function ChatView(props: ChatViewProps) {
           onFileUpload={onFileUpload}
           onGoogleDriveClick={onGoogleDriveClick}
           onFileClick={onFileClick}
+          onOpenQuiz={onOpenQuiz}
+          onOpenFlashcards={onOpenFlashcards}
+          onOpenSlides={onOpenSlides}
+          onOpenSummary={onOpenSummary}
+          onOpenExam={onOpenExam}
           colors={colors}
           theme={theme}
           inputRef={inputRef}
           fileInputRef={fileInputRef}
         />
+
+        {/* Generator shortcuts, empty-chat only — pills reveal one by one from
+            below the composer once it's rendered. */}
+        {messages.length === 0 && !activeQuestions && (
+          <div className="mt-3 flex justify-center">
+            <QuickActionPills
+              onOpenQuiz={onOpenQuiz}
+              onOpenFlashcards={onOpenFlashcards}
+              onOpenSlides={onOpenSlides}
+              onOpenSummary={onOpenSummary}
+              onOpenExam={onOpenExam}
+              colors={colors}
+              labels={actionLabels}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
