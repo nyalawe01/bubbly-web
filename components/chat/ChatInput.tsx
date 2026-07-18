@@ -105,7 +105,7 @@ export function ChatInput({
   const canSend = !isGenerating && (inputText.trim().length > 0 || attachedFiles.length > 0);
 
   return (
-    <div className="max-w-3xl mx-auto relative flex flex-col items-center">
+    <div className="max-w-xl md:max-w-2xl mx-auto relative flex flex-col items-center">
       {showModelPills && (
         <div className={`flex items-center ${colors.bgInput} border ${colors.borderBase} rounded-full p-0.5 w-max mb-1.5 md:mb-2 shadow-sm transition-all`}>
           {(["instant", "expert", "vision"] as const).map((model) => (

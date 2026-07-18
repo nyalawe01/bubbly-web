@@ -226,7 +226,7 @@ export function ChatView(props: ChatViewProps) {
         </button>
       )}
 
-      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-3 md:pb-6 pt-20 md:pt-24 px-4 md:px-24 safe-bottom">
+      <div className="absolute bottom-0 w-full bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent pb-3 md:pb-6 pt-20 md:pt-24 px-6 md:px-24 safe-bottom">
         {/* Mentor questions rise from just above the textbox, one at a time. */}
         {activeQuestions && (
           <ChatQuestionsForm
