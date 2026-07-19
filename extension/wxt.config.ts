@@ -20,7 +20,12 @@ export default defineConfig({
   manifest: {
     name: 'bubbly',
     description: 'Ask bubbly about whatever you’re reading, right from the tab.',
-    permissions: ['storage', 'activeTab', 'contextMenus', 'sidePanel', 'identity', 'scripting'],
+    // "tabs" is metadata-only (title/favicon/url of every open tab, for the
+    // tab-attach picker) — it does NOT grant content access to tabs other
+    // than the active one. Reading a picked background tab still requires
+    // activating it first (see lib/tabAttach.ts), same activeTab boundary
+    // as before, deliberately not broadened to host_permissions/<all_urls>.
+    permissions: ['storage', 'activeTab', 'tabs', 'contextMenus', 'sidePanel', 'identity', 'scripting'],
     host_permissions: [
       'https://bubbly-web-five.vercel.app/*',
       'https://nmvbcfjiyfngxkijnflv.supabase.co/*',

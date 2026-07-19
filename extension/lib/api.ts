@@ -49,12 +49,3 @@ export async function streamChat(
   }
   return full;
 }
-
-// /api/summary expects pre-uploaded Vault document IDs (`sources`), not raw
-// text — a mismatch for "summarize whatever's on this tab right now" without
-// a heavier upload-then-reference round trip. Reusing /api/chat with a
-// summarization-flavored prompt instead keeps this a zero-backend-change MVP,
-// same as the page-aware Q&A path.
-export function summarizePagePrompt(text: string): string {
-  return `Summarize this page for me. Here's its content:\n\n${text.slice(0, 12000)}`;
-}
