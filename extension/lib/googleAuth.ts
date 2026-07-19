@@ -15,8 +15,16 @@
 // same step that was needed for bubbly://auth/callback and the Vercel domain.
 import { supabase } from "./supabase";
 
+// The one value needed to complete the one-time Supabase setup step — surfaced
+// here (not just buried in a console.log) since SignIn renders it directly so
+// nobody has to dig through devtools to find it.
+export function getExtensionRedirectUrl(): string {
+  return chrome.identity.getRedirectURL();
+}
+
 export async function signInWithGoogle(): Promise<void> {
-  const redirectTo = chrome.identity.getRedirectURL();
+  const redirectTo = getExtensionRedirectUrl();
+  console.log("[bubbly] OAuth redirect URI (must be in Supabase's Auth redirect allow-list):", redirectTo);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

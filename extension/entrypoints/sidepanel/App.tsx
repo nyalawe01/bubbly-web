@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { signInWithGoogle } from "@/lib/googleAuth";
+import { signInWithGoogle, getExtensionRedirectUrl } from "@/lib/googleAuth";
 import { streamChat, summarizePagePrompt, type ChatMessage } from "@/lib/api";
 import { extractPageText } from "@/lib/extractPage";
 import "./App.css";
@@ -78,7 +78,41 @@ function SignIn() {
       <button className="link" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
         {mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in"}
       </button>
+      <OAuthSetupHint />
     </div>
+  );
+}
+
+// One-time setup aid: Google sign-in silently falls through to the web app's
+// login instead of completing (Supabase's redirect-URL allow-list rejects
+// anything not explicitly listed, same failure mode hit with mobile/Expo Go
+// earlier) until this exact URL is added to Supabase's Auth -> URL
+// Configuration. Shown inline instead of just console.logged so it's
+// findable without opening devtools.
+function OAuthSetupHint() {
+  const [copied, setCopied] = useState(false);
+  const redirectUrl = getExtensionRedirectUrl();
+
+  const copy = () => {
+    navigator.clipboard.writeText(redirectUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <details className="oauth-hint">
+      <summary>Google sign-in not working?</summary>
+      <p className="muted">
+        Add this exact URL to Supabase &rarr; Authentication &rarr; URL Configuration &rarr; Redirect URLs,
+        then try again:
+      </p>
+      <div className="redirect-url-row">
+        <code>{redirectUrl}</code>
+        <button type="button" className="link" onClick={copy}>
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </details>
   );
 }
 
