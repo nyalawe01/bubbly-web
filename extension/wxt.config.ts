@@ -11,12 +11,15 @@ import { defineConfig } from 'wxt';
 // NOT exempt, so all backend calls must go through the background worker).
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
-  // WXT's own dev server (HMR, unrelated to the extension's WXT_API_URL
-  // target) defaults to :3000 too — same port the Next.js web app's dev
-  // server uses. Moved off it so both can run side by side locally.
-  dev: {
-    server: { port: 3010 },
-  },
+  // No manual dev.server.port here (deliberately removed — see git history):
+  // pinning it to 3010 to dodge the Next.js dev server's :3000 caused the
+  // sidepanel's CSP to be generated against a different origin than the one
+  // Vite actually served from, blocking every dev-mode script with a CSP
+  // violation. In practice the two rarely need to run at once anyway — .env's
+  // WXT_API_URL points at the deployed backend, not a local Next server — so
+  // this just uses WXT's own default (:3000). If you do need both running
+  // together, start Next on an alternate port that session (`next dev -p 3001`)
+  // rather than reintroducing this override.
   manifest: {
     name: 'bubbly',
     description: 'Ask bubbly about whatever you’re reading, right from the tab.',
