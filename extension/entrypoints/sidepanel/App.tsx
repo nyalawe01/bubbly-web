@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Plus, X, MoreVertical, ArrowLeft, FileText, HardDrive, Globe, Send, LogOut, Loader2 } from "lucide-react";
+import { Plus, X, MoreVertical, ArrowLeft, FileText, HardDrive, Globe, Send, LogOut, Loader2, AlertTriangle, Square } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signInWithGoogle, getExtensionRedirectUrl } from "@/lib/googleAuth";
 import {
@@ -13,6 +13,9 @@ import {
   type ChatSessionSummary,
 } from "@/lib/chatSessions";
 import { extractPageText } from "@/lib/extractPage";
+import { extractInteractiveElements, type InteractiveElement } from "@/lib/extractInteractive";
+import { executeAgentAction, isSubmitLikeAction, type AgentAction } from "@/lib/agentActions";
+import { classifyIsPageAction, planPageActions } from "@/lib/agentApi";
 import { listOpenTabs, activateAndExtractTab, type OpenTab, type AttachedTab } from "@/lib/tabAttach";
 import { uploadFileToVault, uploadBlobToVault } from "@/lib/vaultUpload";
 import { listDriveFiles, downloadDriveFileAsBlob, type DriveFile } from "@/lib/googleDrive";
@@ -132,8 +135,55 @@ function firstNameFrom(session: Session): string {
   return fullName.trim().split(/\s+/)[0] || "";
 }
 
+function describeAction(action: AgentAction, elements: InteractiveElement[]): string {
+  const el = elements.find((e) => e.id === action.id);
+  const label = el?.label || `that element`;
+  switch (action.type) {
+    case "type":
+      return `Type "${action.value}" into ${label}`;
+    case "click":
+      return `Click ${label}`;
+    case "select":
+      return `Select "${action.value}" in ${label}`;
+    case "check":
+      return `Check ${label}`;
+    case "uncheck":
+      return `Uncheck ${label}`;
+    case "scrollTo":
+      return `Scroll to ${label}`;
+    default:
+      return label;
+  }
+}
+
 type View = "chat" | "recents";
 type AttachPanel = "menu" | "drive";
+
+// Everything the page-action agent needs across its whole lifecycle
+// (preview -> execute -> maybe pause for a submit confirmation -> done),
+// kept as one object so a single setAgentState call always has the full
+// picture instead of several booleans getting out of sync with each other.
+interface AgentFlowState {
+  phase: "idle" | "planning" | "preview" | "running" | "confirmSubmit";
+  actions: AgentAction[];
+  elements: InteractiveElement[];
+  tabId: number | null;
+  instruction: string;
+  uiNext: ChatMessage[];
+  stepIndex: number;
+  pendingSubmitAction: AgentAction | null;
+}
+
+const AGENT_IDLE: AgentFlowState = {
+  phase: "idle",
+  actions: [],
+  elements: [],
+  tabId: null,
+  instruction: "",
+  uiNext: [],
+  stepIndex: 0,
+  pendingSubmitAction: null,
+};
 
 function Chat({ session }: { session: Session }) {
   const [view, setView] = useState<View>("chat");
@@ -158,12 +208,16 @@ function Chat({ session }: { session: Session }) {
 
   const [pendingContextNote, setPendingContextNote] = useState<string | null>(null);
 
+  const [agentState, setAgentState] = useState<AgentFlowState>(AGENT_IDLE);
+  const agentStopRef = useRef(false);
+
   const listRef = useRef<HTMLDivElement>(null);
   const attachContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const firstName = firstNameFrom(session);
+  const agentBusy = agentState.phase !== "idle";
 
   // Selection sent over from the "Ask bubbly about this" context menu
   // (background.ts stashes it in chrome.storage.session since there's no
@@ -183,7 +237,7 @@ function Chat({ session }: { session: Session }) {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, agentState.phase]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -231,9 +285,7 @@ function Chat({ session }: { session: Session }) {
     }
   };
 
-  const runChat = async (text: string) => {
-    const userMsg: ChatMessage = { role: "user", text };
-    const uiNext = [...messages, userMsg];
+  const runChatTurn = async (uiNext: ChatMessage[]) => {
     setMessages([...uiNext, { role: "ai", text: "" }]);
     setSending(true);
     try {
@@ -260,12 +312,140 @@ function Chat({ session }: { session: Session }) {
     }
   };
 
-  const handleSend = () => {
+  const finishWithAiText = async (uiNext: ChatMessage[], text: string) => {
+    const finalMessages: ChatMessage[] = [...uiNext, { role: "ai", text }];
+    setMessages(finalMessages);
+    await persist(finalMessages);
+  };
+
+  // --- Page-action agent ---------------------------------------------------
+  const extractElementsFromTab = async (tabId: number): Promise<InteractiveElement[]> => {
+    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId }, func: extractInteractiveElements });
+    return result || [];
+  };
+
+  const finishAgentRun = async (uiNext: ChatMessage[], instruction: string, actions: AgentAction[], completedCount: number) => {
+    agentStopRef.current = false;
+    const total = actions.length;
+    const summary =
+      completedCount >= total && total > 0
+        ? `Done — completed all ${total} step${total > 1 ? "s" : ""}.`
+        : completedCount === 0
+        ? `Didn't make any changes.`
+        : `Stopped after ${completedCount} of ${total} steps.`;
+    setAgentState(AGENT_IDLE);
+    await finishWithAiText(uiNext, summary);
+  };
+
+  const executeAgentFrom = async (
+    actions: AgentAction[],
+    elements: InteractiveElement[],
+    tabId: number,
+    startIndex: number,
+    uiNext: ChatMessage[],
+    instruction: string
+  ) => {
+    let completed = startIndex;
+    for (let i = startIndex; i < actions.length; i++) {
+      if (agentStopRef.current) {
+        await finishAgentRun(uiNext, instruction, actions, completed);
+        return;
+      }
+      const action = actions[i];
+      const el = elements.find((e) => e.id === action.id);
+
+      if (el && isSubmitLikeAction(action, el)) {
+        setAgentState((prev) => ({ ...prev, phase: "confirmSubmit", stepIndex: i, pendingSubmitAction: action }));
+        return; // resumes via confirmPendingSubmit/cancelPendingSubmit
+      }
+
+      setAgentState((prev) => ({ ...prev, phase: "running", stepIndex: i }));
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, func: executeAgentAction, args: [action] });
+        completed = i + 1;
+      } catch {
+        break;
+      }
+    }
+    await finishAgentRun(uiNext, instruction, actions, completed);
+  };
+
+  const approveAgentPlan = () => {
+    if (agentState.phase !== "preview" || agentState.tabId == null) return;
+    agentStopRef.current = false;
+    const { actions, elements, tabId, uiNext, instruction } = agentState;
+    executeAgentFrom(actions, elements, tabId, 0, uiNext, instruction);
+  };
+
+  const cancelAgentPlan = async () => {
+    if (agentState.phase !== "preview") return;
+    const { uiNext } = agentState;
+    setAgentState(AGENT_IDLE);
+    await finishWithAiText(uiNext, "Okay, I didn't make any changes.");
+  };
+
+  const confirmPendingSubmit = async () => {
+    if (agentState.phase !== "confirmSubmit" || !agentState.pendingSubmitAction || agentState.tabId == null) return;
+    const { actions, elements, tabId, stepIndex, uiNext, instruction, pendingSubmitAction } = agentState;
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, func: executeAgentAction, args: [pendingSubmitAction] });
+      await executeAgentFrom(actions, elements, tabId, stepIndex + 1, uiNext, instruction);
+    } catch {
+      await finishAgentRun(uiNext, instruction, actions, stepIndex);
+    }
+  };
+
+  const cancelPendingSubmit = async () => {
+    if (agentState.phase !== "confirmSubmit") return;
+    const { actions, uiNext, instruction, stepIndex } = agentState;
+    await finishAgentRun(uiNext, instruction, actions, stepIndex);
+  };
+
+  const stopAgent = () => {
+    agentStopRef.current = true;
+  };
+
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || agentBusy) return;
     setInput("");
     setPendingContextNote(null);
-    runChat(text);
+
+    if (!attachedTab) {
+      runChatTurn([...messages, { role: "user", text }]);
+      return;
+    }
+
+    const uiNext: ChatMessage[] = [...messages, { role: "user", text }];
+    setMessages(uiNext);
+    setAgentState((prev) => ({ ...prev, phase: "planning" }));
+
+    let isAction = false;
+    try {
+      isAction = await classifyIsPageAction(text);
+    } catch {
+      isAction = false;
+    }
+
+    if (!isAction) {
+      setAgentState(AGENT_IDLE);
+      runChatTurn(uiNext);
+      return;
+    }
+
+    try {
+      const elements = await extractElementsFromTab(attachedTab.tabId);
+      const actions = await planPageActions(text, elements);
+      if (actions.length === 0) {
+        setAgentState(AGENT_IDLE);
+        await finishWithAiText(uiNext, "I couldn't find anything on this page to act on for that — try describing the field or button more specifically.");
+        return;
+      }
+      setAgentState({ phase: "preview", actions, elements, tabId: attachedTab.tabId, instruction: text, uiNext, stepIndex: 0, pendingSubmitAction: null });
+    } catch (e: any) {
+      setAgentState(AGENT_IDLE);
+      await finishWithAiText(uiNext, `I couldn't plan that: ${e.message}`);
+    }
   };
 
   const startNewChat = () => {
@@ -273,6 +453,8 @@ function Chat({ session }: { session: Session }) {
     setSessionId(null);
     setAttachedTab(null);
     setInput("");
+    agentStopRef.current = false;
+    setAgentState(AGENT_IDLE);
   };
 
   const openRecents = () => setView("recents");
@@ -284,6 +466,8 @@ function Chat({ session }: { session: Session }) {
       setMessages(row.history || []);
       setSessionId(row.id);
       setAttachedTab(null);
+      agentStopRef.current = false;
+      setAgentState(AGENT_IDLE);
       setView("chat");
     } catch {
       setView("chat");
@@ -394,7 +578,7 @@ function Chat({ session }: { session: Session }) {
       </header>
 
       <div className="flex-1 overflow-y-auto px-3 py-4" ref={listRef}>
-        {messages.length === 0 ? (
+        {messages.length === 0 && agentState.phase === "idle" ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-2">
             <h1 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
               Hello, {firstName || "there"}. How can I help you today?
@@ -413,6 +597,75 @@ function Chat({ session }: { session: Session }) {
                 </div>
               </div>
             ))}
+
+            {agentState.phase === "planning" && (
+              <div className="flex justify-start">
+                <div className="max-w-[88%] rounded-2xl px-3 py-2.5 bg-[var(--bg-card)] border border-[var(--border)] flex items-center gap-2 text-[13px] text-[var(--text-secondary)]">
+                  <Loader2 size={13} className="animate-spin" /> Figuring out what to do…
+                </div>
+              </div>
+            )}
+
+            {agentState.phase === "preview" && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-3">
+                <div className="text-[12px] font-semibold text-[var(--text-primary)] mb-2">bubbly wants to:</div>
+                <ol className="space-y-1.5 mb-3">
+                  {agentState.actions.map((a, i) => {
+                    const el = agentState.elements.find((e) => e.id === a.id);
+                    const submitLike = el ? isSubmitLikeAction(a, el) : false;
+                    return (
+                      <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-primary)]">
+                        <span className="text-[var(--text-secondary)] flex-shrink-0">{i + 1}.</span>
+                        <span className="flex-1">{describeAction(a, agentState.elements)}</span>
+                        {submitLike && <AlertTriangle size={12} className="text-amber-500 flex-shrink-0 mt-0.5" />}
+                      </li>
+                    );
+                  })}
+                </ol>
+                <div className="flex gap-2">
+                  <button onClick={cancelAgentPlan} className="flex-1 py-1.5 rounded-lg border border-[var(--border)] text-[12px] text-[var(--text-secondary)]">
+                    Cancel
+                  </button>
+                  <button onClick={approveAgentPlan} className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] text-[12px] font-medium">
+                    Approve
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agentState.phase === "running" && (
+              <div className="flex justify-start">
+                <div className="max-w-[88%] rounded-2xl px-3 py-2.5 bg-[var(--bg-card)] border border-[var(--border)] text-[13px]">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)] mb-1">
+                    <Loader2 size={13} className="animate-spin" />
+                    Step {agentState.stepIndex + 1} of {agentState.actions.length}…
+                  </div>
+                  <div className="text-[var(--text-primary)]">{describeAction(agentState.actions[agentState.stepIndex], agentState.elements)}</div>
+                  <button onClick={stopAgent} className="mt-2 flex items-center gap-1 text-[11px] text-red-400">
+                    <Square size={10} /> Stop
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agentState.phase === "confirmSubmit" && agentState.pendingSubmitAction && (
+              <div className="rounded-2xl border border-amber-500/40 bg-[var(--bg-card)] p-3">
+                <div className="flex items-center gap-2 text-[12px] font-semibold text-amber-500 mb-1">
+                  <AlertTriangle size={13} /> This step needs its own confirmation
+                </div>
+                <div className="text-[13px] text-[var(--text-primary)] mb-3">
+                  {describeAction(agentState.pendingSubmitAction, agentState.elements)}?
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={cancelPendingSubmit} className="flex-1 py-1.5 rounded-lg border border-[var(--border)] text-[12px] text-[var(--text-secondary)]">
+                    Stop here
+                  </button>
+                  <button onClick={confirmPendingSubmit} className="flex-1 py-1.5 rounded-lg bg-amber-500 text-white text-[12px] font-medium">
+                    Yes, do it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -458,9 +711,10 @@ function Chat({ session }: { session: Session }) {
                   handleSend();
                 }
               }}
-              placeholder="Message bubbly…"
+              placeholder={agentBusy ? "Review the steps above first…" : "Message bubbly…"}
               rows={1}
-              className="flex-1 w-full bg-transparent outline-none py-1.5 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] text-[13px] font-medium resize-none min-h-[32px] max-h-[120px] overflow-y-auto"
+              disabled={agentBusy}
+              className="flex-1 w-full bg-transparent outline-none py-1.5 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] text-[13px] font-medium resize-none min-h-[32px] max-h-[120px] overflow-y-auto disabled:opacity-50"
             />
           </div>
 
@@ -468,8 +722,8 @@ function Chat({ session }: { session: Session }) {
             <div className="relative flex items-center" ref={attachContainerRef}>
               <button
                 onClick={openAttachMenu}
-                disabled={uploading || tabAttachBusy}
-                className={`p-1.5 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-transform ${attachOpen ? "rotate-45" : ""}`}
+                disabled={uploading || tabAttachBusy || agentBusy}
+                className={`p-1.5 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-transform disabled:opacity-40 ${attachOpen ? "rotate-45" : ""}`}
                 aria-label="Attach"
               >
                 {uploading || tabAttachBusy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
@@ -547,7 +801,7 @@ function Chat({ session }: { session: Session }) {
 
             <button
               onClick={handleSend}
-              disabled={sending || !input.trim()}
+              disabled={sending || agentBusy || !input.trim()}
               className="p-2 rounded-full bg-[var(--accent)] text-[var(--accent-ink)] disabled:opacity-40"
               aria-label="Send"
             >

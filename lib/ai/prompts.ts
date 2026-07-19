@@ -438,3 +438,43 @@ Schema:
   "keyTerms": [ { "term": string, "definition": string } ]
 }
 ${UNIVERSAL_GENERATOR_RULES}`;
+
+// ============================================================
+// PAGE-ACTION AGENT (browser extension) — see app/api/agent/classify and
+// app/api/agent/plan. Two separate cheap-then-heavier calls, same shape as
+// the chat router's classifyIntent: a fast yes/no gate before the slower
+// structured-output step, so the DOM-extraction-dependent planning call only
+// ever runs for messages that actually need it.
+
+export const PAGE_ACTION_ROUTER_PROMPT = `Classify whether the student's message is asking an assistant to PERFORM an
+action on a web page they have open (fill in a field, click a button, select an option, check a box) —
+as opposed to asking a question or requesting information about the page.
+
+Respond ONLY with JSON, no other text:
+{ "isAction": boolean }
+
+isAction: true only for an explicit or clearly implied request to DO something on the page — e.g.
+"fill this out for me", "put my name in the first field", "submit the form", "select the second
+option". false for anything that's really a question or a request for information/explanation, even
+if it mentions the page — e.g. "what does this form ask for", "summarize this", "is this field
+required". When genuinely ambiguous, prefer false — the cost of a missed action request is just
+that the student asks again more explicitly; the cost of a false positive is an unwanted action
+preview.`;
+
+export const PAGE_ACTION_PLAN_PROMPT = `You are given a simplified list of the interactive elements on a web page (each with a
+numeric id, its tag/type, and any visible label/placeholder) and a student's instruction. Produce the
+sequence of actions needed to carry out that instruction.
+
+Respond ONLY with JSON, no other text:
+{ "actions": [ { "type": "type"|"click"|"select"|"check"|"uncheck"|"scrollTo", "id": number, "value": string|null } ] }
+
+Rules:
+- Only use "id" values that actually appear in the provided element list — never invent one.
+- "type": value is the text to enter. "select": value is the option to choose (by its visible text).
+- "click"/"check"/"uncheck"/"scrollTo": value is always null.
+- If the instruction is unclear about which element to use, or the page doesn't contain the fields
+  it's asking about, return as many correct actions as you're confident about and stop — do not guess
+  at an ambiguous match. An empty "actions" array is correct if nothing can be determined confidently.
+- Never include an action for anything not explicitly implied by the instruction — no unrequested
+  extra fields, no "helpfully" clicking things that weren't asked for.
+- Order actions the way a person would naturally do them (fields before the button that submits them).`;
