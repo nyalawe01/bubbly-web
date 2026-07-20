@@ -99,7 +99,7 @@ export default function VaultScreen() {
   const filteredFiles = files.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[var(--background)] text-[var(--text-primary)]">
+    <div className="relative h-[100dvh] overflow-y-auto hide-scrollbar bg-[var(--background)] text-[var(--text-primary)]">
       <ArtLayer surface="vault" />
       <nav className="relative z-20 border-b border-[var(--border)] px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 bg-[var(--background)]/80 backdrop-blur-md">
         <div className="flex items-center gap-3 md:gap-4">
