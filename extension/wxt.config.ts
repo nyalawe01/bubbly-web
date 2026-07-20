@@ -33,6 +33,14 @@ export default defineConfig({
       'https://bubbly-web-five.vercel.app/*',
       'https://nmvbcfjiyfngxkijnflv.supabase.co/*',
       'http://localhost:3000/*',
+      // Chrome treats file:// as its own permission class, separate from
+      // regular http(s) host access — narrow (only local files a user
+      // explicitly opens as a tab, never arbitrary web browsing) and
+      // doesn't reopen the activeTab-only decision made for web pages. This
+      // alone isn't enough, though: Chrome also requires the user to flip
+      // "Allow access to file URLs" on this extension's chrome://extensions
+      // details page by hand — that gate can't be granted from the manifest.
+      'file:///*',
     ],
     // No popup entrypoint (side panel replaces it), but MV3 still needs an
     // `action` entry for the toolbar button to exist at all — otherwise
