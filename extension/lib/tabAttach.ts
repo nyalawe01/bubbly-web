@@ -1,12 +1,22 @@
 // extension/lib/tabAttach.ts
 //
-// Lets the user attach a specific open tab as chat context — not necessarily
-// the one currently active. The "tabs" permission (wxt.config.ts) only
-// unlocks metadata (title/url/favIconUrl) for every open tab; it does NOT
-// grant content access to a tab that isn't active. So picking a background
-// tab activates it first (bringing its window forward too, if it's in a
-// different one) — same activeTab boundary as everywhere else in this
-// extension, deliberately not broadened to host_permissions/<all_urls>.
+// Attaching only ever reads the tab that's active AT THE MOMENT of the
+// attach click (chrome.tabs.query({active:true}) queried fresh, then
+// chrome.scripting.executeScript immediately after — the same pattern
+// Chrome's own docs use for activeTab) — the one reliable path.
+//
+// An earlier version tried to chrome.tabs.update() a BACKGROUND tab to
+// "activate" it and then extract it in the same action. That doesn't work:
+// activeTab is granted only by a genuine user gesture on the extension
+// itself (toolbar click, keyboard shortcut, context menu) tied to whichever
+// tab was active at that exact moment — switching focus programmatically
+// afterward does not extend or transfer that grant. Side panels compound
+// this further: Chrome's own extension team has open, unresolved threads
+// about activeTab timing being unreliable across a side panel's tab
+// switches, so rather than lean on an ambiguous edge case, picking a
+// background tab from the list just switches to it — the user then attaches
+// it as the (now genuinely) active tab, a real gesture-driven flow instead
+// of a guess.
 export interface OpenTab {
   id: number;
   title: string;
@@ -30,13 +40,20 @@ export async function listOpenTabs(): Promise<OpenTab[]> {
     .map((t) => ({ id: t.id, title: t.title || t.url || "Untitled tab", url: t.url!, favIconUrl: t.favIconUrl, windowId: t.windowId }));
 }
 
-export async function activateAndExtractTab(tab: OpenTab, extractFn: () => { title: string; text: string; url: string }): Promise<AttachedTab> {
+// Switches to a tab in the list — does NOT attach it. The caller (App.tsx)
+// shows a hint to attach again now that it's genuinely the active tab.
+export async function switchToTab(tab: OpenTab): Promise<void> {
   await chrome.windows.update(tab.windowId, { focused: true });
   await chrome.tabs.update(tab.id, { active: true });
+}
 
-  const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractFn });
+export async function extractActiveTab(extractFn: () => { title: string; text: string; url: string }): Promise<AttachedTab> {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!activeTab?.id) throw new Error("Couldn't find the active tab.");
+
+  const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: activeTab.id }, func: extractFn });
   if (!result?.text) {
-    throw new Error("Couldn't read that tab (it may be a restricted page like a Chrome settings page or the Web Store).");
+    throw new Error("Couldn't read this tab (it may be a restricted page like a Chrome settings page or the Web Store).");
   }
-  return { tabId: tab.id, title: result.title || tab.title, url: result.url || tab.url, favIconUrl: tab.favIconUrl, text: result.text };
+  return { tabId: activeTab.id, title: result.title || activeTab.title || "Untitled tab", url: result.url || activeTab.url || "", favIconUrl: activeTab.favIconUrl, text: result.text };
 }

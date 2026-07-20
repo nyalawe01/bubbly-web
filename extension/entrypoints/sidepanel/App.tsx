@@ -16,7 +16,7 @@ import { extractPageText } from "@/lib/extractPage";
 import { extractInteractiveElements, type InteractiveElement } from "@/lib/extractInteractive";
 import { executeAgentAction, isSubmitLikeAction, type AgentAction } from "@/lib/agentActions";
 import { classifyIsPageAction, planPageActions } from "@/lib/agentApi";
-import { listOpenTabs, activateAndExtractTab, type OpenTab, type AttachedTab } from "@/lib/tabAttach";
+import { listOpenTabs, switchToTab, extractActiveTab, type OpenTab, type AttachedTab } from "@/lib/tabAttach";
 import { uploadFileToVault, uploadBlobToVault } from "@/lib/vaultUpload";
 import { listDriveFiles, downloadDriveFileAsBlob, type DriveFile } from "@/lib/googleDrive";
 import "./App.css";
@@ -207,6 +207,7 @@ function Chat({ session }: { session: Session }) {
   const [driveError, setDriveError] = useState("");
 
   const [pendingContextNote, setPendingContextNote] = useState<string | null>(null);
+  const [tabSwitchHint, setTabSwitchHint] = useState<string | null>(null);
 
   const [agentState, setAgentState] = useState<AgentFlowState>(AGENT_IDLE);
   const agentStopRef = useRef(false);
@@ -410,6 +411,7 @@ function Chat({ session }: { session: Session }) {
     if (!text || sending || agentBusy) return;
     setInput("");
     setPendingContextNote(null);
+    setTabSwitchHint(null);
 
     if (!attachedTab) {
       runChatTurn([...messages, { role: "user", text }]);
@@ -489,16 +491,31 @@ function Chat({ session }: { session: Session }) {
     }
   };
 
-  const handleAttachTab = async (tab: OpenTab) => {
+  const handleAttachCurrentTab = async () => {
     setTabAttachBusy(true);
     try {
-      const attached = await activateAndExtractTab(tab, extractPageText);
+      const attached = await extractActiveTab(extractPageText);
       setAttachedTab(attached);
+      setTabSwitchHint(null);
       setAttachOpen(false);
     } catch (e: any) {
       setMessages((prev) => [...prev, { role: "ai", text: `Error: ${e.message}` }]);
     } finally {
       setTabAttachBusy(false);
+    }
+  };
+
+  // Picking a background tab from the list can only switch to it — Chrome's
+  // activeTab permission is granted by a real user gesture on the extension
+  // itself (not by this switch), so it can't be read in the same action. The
+  // hint tells the user to attach again now that it's genuinely active.
+  const handleSwitchToTab = async (tab: OpenTab) => {
+    try {
+      await switchToTab(tab);
+      setTabSwitchHint(`Switched to "${tab.title}" — click Attach current tab to read it.`);
+      setAttachOpen(false);
+    } catch (e: any) {
+      setMessages((prev) => [...prev, { role: "ai", text: `Error: ${e.message}` }]);
     }
   };
 
@@ -577,7 +594,7 @@ function Chat({ session }: { session: Session }) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-3 py-4" ref={listRef}>
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-3 py-4" ref={listRef}>
         {messages.length === 0 && agentState.phase === "idle" ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-2">
             <h1 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
@@ -671,6 +688,7 @@ function Chat({ session }: { session: Session }) {
       </div>
 
       {pendingContextNote && <div className="px-3 pb-1 text-[11px] text-[var(--text-secondary)]">{pendingContextNote}</div>}
+      {tabSwitchHint && <div className="px-3 pb-1 text-[11px] text-amber-500">{tabSwitchHint}</div>}
 
       <div className="px-3 pb-3 flex-shrink-0">
         {uploadedNames.length > 0 && (
@@ -733,8 +751,17 @@ function Chat({ session }: { session: Session }) {
                 <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-1 z-50 shadow-2xl">
                   {attachPanel === "menu" ? (
                     <>
-                      <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Open tabs</div>
-                      <div className="max-h-40 overflow-y-auto">
+                      <button
+                        onClick={handleAttachCurrentTab}
+                        className="w-full flex items-center gap-2 p-2 hover:bg-[var(--bg-hover)] rounded-lg text-[12px] font-medium text-[var(--accent)]"
+                      >
+                        <Globe size={14} className="flex-shrink-0" /> Attach current tab
+                      </button>
+
+                      <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                        Other open tabs (tap to switch)
+                      </div>
+                      <div className="max-h-40 overflow-y-auto hide-scrollbar">
                         {tabsLoading ? (
                           <div className="px-2 py-3 flex justify-center">
                             <Loader2 size={14} className="animate-spin text-[var(--text-secondary)]" />
@@ -745,7 +772,7 @@ function Chat({ session }: { session: Session }) {
                           openTabs.map((tab) => (
                             <button
                               key={tab.id}
-                              onClick={() => handleAttachTab(tab)}
+                              onClick={() => handleSwitchToTab(tab)}
                               className="w-full flex items-center gap-2 p-2 hover:bg-[var(--bg-hover)] rounded-lg text-[12px] text-left"
                             >
                               {tab.favIconUrl ? (
@@ -775,7 +802,7 @@ function Chat({ session }: { session: Session }) {
                       <button onClick={() => setAttachPanel("menu")} className="w-full flex items-center gap-2 p-2 hover:bg-[var(--bg-hover)] rounded-lg text-[12px] font-medium mb-1">
                         <ArrowLeft size={14} /> Google Drive
                       </button>
-                      <div className="max-h-48 overflow-y-auto">
+                      <div className="max-h-48 overflow-y-auto hide-scrollbar">
                         {driveLoading ? (
                           <div className="px-2 py-3 flex justify-center">
                             <Loader2 size={14} className="animate-spin text-[var(--text-secondary)]" />
@@ -843,7 +870,7 @@ function RecentsPanel({
         <span className="text-[13px] font-semibold">Recents</span>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-2 py-2">
         {loading ? (
           <div className="flex justify-center py-6">
             <Loader2 size={16} className="animate-spin text-[var(--text-secondary)]" />

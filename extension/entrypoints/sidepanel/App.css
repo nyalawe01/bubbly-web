@@ -12,6 +12,17 @@ body {
   flex-direction: column;
 }
 
+/* Same convention as the web app's .hide-scrollbar (app/globals.css) — the
+   list still scrolls normally, the scrollbar itself just isn't drawn. */
+.hide-scrollbar::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 .centered {
   height: 100vh;
   display: flex;
