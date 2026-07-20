@@ -8,6 +8,7 @@
 
 import { getClient, MODELS } from "@/lib/ai/models";
 import { fetchSourceContent } from "@/lib/ai/vault";
+import { postProcessQuiz } from "@/lib/ai/quiz";
 import {
   QUIZ_CONTRACT,
   FLASHCARD_CONTRACT,
@@ -52,6 +53,20 @@ const QUIZ_COUNTS: Record<string, number> = { fewer: 20, standard: 25, more: 35 
 export async function generateQuizContent(supabase: any, userId: string, config: any): Promise<GenResult> {
   const numQuestions = QUIZ_COUNTS[config.questionCount] ?? QUIZ_COUNTS.standard;
   const sourceContent = config.sources?.length ? await fetchSourceContent(supabase, config.sources, userId, 50) : "";
+
+  // Diagrams the model may reference — only images actually extracted from these
+  // source documents (see app/api/upload/route.ts). PDFs don't extract images yet.
+  let documentImages: { url: string; ai_description: string | null }[] = [];
+  if (config.sources?.length) {
+    const { data: images } = await supabase
+      .from("vault_document_images")
+      .select("url, ai_description")
+      .eq("user_id", userId)
+      .in("document_id", config.sources)
+      .limit(10);
+    documentImages = images || [];
+  }
+
   const system = `${QUIZ_CONTRACT}\n\nGenerate exactly ${numQuestions} questions at ${
     DIFFICULTY_MAP[config.difficulty] || "medium"
   } difficulty.`;
@@ -59,7 +74,20 @@ export async function generateQuizContent(supabase: any, userId: string, config:
     config.difficulty || "medium"
   } difficulty.`;
   if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
-  const quiz = await complete(system, user, 8000);
+  if (documentImages.length) {
+    user += `\n\nDOCUMENT IMAGES (only use these exact URLs for "diagram" questions, and only if a question` +
+      ` about the image is genuinely answerable — skip decorative/irrelevant ones):\n` +
+      documentImages
+        .map((img, i) => `${i + 1}. imageUrl: ${img.url}\n   description: ${img.ai_description || "(no description)"}`)
+        .join("\n");
+  }
+
+  // max_tokens 6000 (not 8000): Groq's on-demand tier caps requests at 12,000
+  // tokens/min and max_tokens counts as RESERVED against that, not just what's
+  // actually generated — 8000 plus a full system+context prompt was tipping real
+  // requests over the limit. See app/api/quiz/route.ts for the same fix.
+  const rawQuiz = await complete(system, user, 6000);
+  const quiz = postProcessQuiz(rawQuiz, documentImages.map((img) => img.url));
   return {
     title: quiz.title || "Quiz",
     content: quiz,
