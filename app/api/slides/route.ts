@@ -1,6 +1,6 @@
 // app/api/slides/route.ts
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SLIDE_OUTLINE_PROMPT, SLIDE_RENDER_PROMPT } from "@/lib/ai/prompts";
 import { fetchSourceContent } from "@/lib/ai/vault";
@@ -22,7 +22,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const openai = getClient(MODELS.generator.provider);
     const numSlides = SLIDE_COUNTS[length] ?? SLIDE_COUNTS.default;
 
     // Pull the student's own notes for this deck, if any Vault sources were selected —
@@ -45,8 +44,7 @@ Style: ${formatNote}
 Target slide count: ${numSlides}
 ${sourceContent ? `\nSource material (ground the outline in this, don't invent facts outside it):\n${sourceContent.slice(0, 8000)}` : ''}`;
 
-    const outlineResponse = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const outlineResponse = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: SLIDE_OUTLINE_PROMPT },
         { role: "user", content: outlineUser },
@@ -69,8 +67,7 @@ ${sourceContent ? `\nSource material (ground the outline in this, don't invent f
     const renderedSlides = await Promise.all(
       outlineSlides.map(async (slide: any) => {
         try {
-          const renderResponse = await openai.chat.completions.create({
-            model: MODELS.generator.model,
+          const renderResponse = await callModel(MODELS.generator, {
             messages: [
               { role: "system", content: SLIDE_RENDER_PROMPT },
               {

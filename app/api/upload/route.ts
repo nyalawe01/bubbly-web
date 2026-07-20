@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { callModel, MODELS } from "@/lib/ai/models";
 
 import * as mammothModule from 'mammoth';
 import * as XLSX from 'xlsx';
@@ -117,11 +118,11 @@ function chunkText(text: string, maxChars = 2500) {
   return chunks;
 }
 
-async function generateAISummary(text: string, openRouterKey: string): Promise<string> {
+async function generateAISummary(text: string): Promise<string> {
   try {
-    const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: openRouterKey });
-    const response = await openai.chat.completions.create({
-      model: "deepseek/deepseek-chat",
+    // Routed through MODELS.chatExpert (centralized) instead of a hardcoded model
+    // string — swapping the Expert tier used to silently miss this call site.
+    const response = await callModel(MODELS.chatExpert, {
       messages: [
         {
           role: "system",
@@ -320,7 +321,7 @@ export async function POST(request: Request) {
     textContent = textContent.trim();
     if (!textContent) throw new Error("Document extraction failed.");
 
-    const aiSummary = await generateAISummary(textContent, openRouterKey);
+    const aiSummary = await generateAISummary(textContent);
 
     const { data: docData, error: docError } = await supabase
       .from('vault_documents')

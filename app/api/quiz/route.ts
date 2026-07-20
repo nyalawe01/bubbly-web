@@ -6,7 +6,7 @@
 // Delete the old routes.ts file after adding this one.
 
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchSourceContent } from "@/lib/ai/vault";
 import { QUIZ_CONTRACT } from "@/lib/ai/prompts";
@@ -55,8 +55,6 @@ export async function POST(request: Request) {
       hard: "advanced concepts requiring deep understanding",
     };
 
-    const openai = getClient(MODELS.generator.provider);
-
     const systemPrompt = `${QUIZ_CONTRACT}
 
 Generate exactly ${numQuestions} questions at ${difficultyMap[difficulty] || 'medium'} difficulty.`;
@@ -76,17 +74,17 @@ Exactly ${numQuestions} questions at ${difficulty} difficulty.`;
           .join("\n");
     }
 
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      // Groq's on-demand tier caps requests at 12,000 tokens/min, and max_tokens counts
-      // against that cap as RESERVED, not just what's actually generated. 8000 was fine
-      // with the old short prompt; the richer QUIZ_CONTRACT + a full 8000-char CONTEXT
-      // block was tipping real (source-grounded) requests over the limit and 500ing.
-      // 6000 comfortably covers even a 35-question, all-types quiz (~5000 tokens observed).
+      // 6000 covers even a 35-question, all-types quiz (~5000 tokens observed) — not
+      // shrunk to fit inside Groq gpt-oss-120b's free-tier 8K-tokens/min cap on its own,
+      // since a large quiz's prompt + 6000 can exceed that regardless. callModel()'s
+      // fallback ladder treats Groq's 413 ("too large") as a failover trigger, so an
+      // oversized request transparently retries on OpenRouter's Gemini candidate
+      // instead of truncating output to force-fit the smaller tier.
       max_tokens: 6000,
       temperature: 0.3,
       response_format: { type: "json_object" },

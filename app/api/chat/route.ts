@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CHAT_SYSTEM_PROMPT, diagramAddendum, imageAddendum, webSearchAddendum } from "@/lib/ai/prompts";
 import { classifyIntent, type RouteDecision } from "@/lib/ai/router";
 import { embedText, fetchVaultContext, formatVaultContextBlock } from "@/lib/ai/vault";
-import { getClient, chatModelFor } from "@/lib/ai/models";
+import { callModel, chatModelFor } from "@/lib/ai/models";
 import { matchCache, writeCache } from "@/lib/ai/cache";
 
 export async function POST(request: Request) {
@@ -181,14 +181,13 @@ export async function POST(request: Request) {
       })) || [];
     formattedHistory.push({ role: "user", content: message });
 
-    // Pick the chat tier: instant/default -> Groq (fast), expert -> DeepSeek,
-    // vision -> Gemini Flash. Groq's near-instant first token is what makes this
-    // feel like ChatGPT. (See lib/ai/models.ts.)
-    const tier = chatModelFor(modelType);
-    const chatClient = getClient(tier.provider);
-
-    const completionStream = await chatClient.chat.completions.create({
-      model: tier.model,
+    // Pick the chat tier: instant/default -> Groq (fast, falls back to OpenRouter
+    // Gemini on a rate limit/deprecation), expert -> DeepSeek, vision -> Gemini
+    // Flash. Groq's near-instant first token is what makes this feel like ChatGPT.
+    // (See lib/ai/models.ts.) callModel() fails over on a rejected create() call —
+    // that happens before any stream bytes are consumed, so this is safe for the
+    // streaming case too, never a mid-stream provider switch.
+    const completionStream: any = await callModel(chatModelFor(modelType), {
       messages: [
         { role: "system", content: dynamicSystemInstruction },
         ...formattedHistory,
@@ -268,7 +267,7 @@ export async function POST(request: Request) {
           // Cache write on a miss — only the plain-text case (no diagram/questions/image
           // tag), and only when this turn was cache-eligible to begin with.
           if (cacheEligible && finalPlainText) {
-            writeCache(supabase, "chat", message, queryEmbedding, { text: finalPlainText }, tier.model);
+            writeCache(supabase, "chat", message, queryEmbedding, { text: finalPlainText }, completionStream._modelUsed);
           }
 
           if (diagramData) {

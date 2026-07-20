@@ -5,7 +5,7 @@
 // so it no longer blocks the reply, and is run in PARALLEL with Vault retrieval by
 // the chat route.
 
-import { getClient, MODELS } from "./models";
+import { callModel, MODELS } from "./models";
 import { ROUTER_SYSTEM_PROMPT } from "./prompts";
 
 export interface RouteDecision {
@@ -26,9 +26,7 @@ const FALLBACK: RouteDecision = {
 
 export async function classifyIntent(message: string): Promise<RouteDecision> {
   try {
-    const client = getClient(MODELS.router.provider);
-    const response = await client.chat.completions.create({
-      model: MODELS.router.model,
+    const response = await callModel(MODELS.router, {
       messages: [
         { role: "system", content: ROUTER_SYSTEM_PROMPT },
         { role: "user", content: message },

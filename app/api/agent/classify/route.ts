@@ -5,12 +5,12 @@
 // about it? Deliberately separate from app/api/agent/plan (which needs the
 // page's interactive elements, a nontrivial DOM-extraction step) so that
 // cost only gets paid for messages that actually need it. Same
-// getClient(MODELS.router.provider) pattern as lib/ai/router.ts's
+// callModel(MODELS.router, ...) pattern as lib/ai/router.ts's
 // classifyIntent — modeled on it directly, kept as its own isolated route
 // rather than folded into /api/chat to avoid touching that already-complex,
 // heavily shared streaming pipeline.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PAGE_ACTION_ROUTER_PROMPT } from "@/lib/ai/prompts";
 
@@ -25,14 +25,15 @@ export async function POST(request: Request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const client = getClient(MODELS.router.provider);
-    const response = await client.chat.completions.create({
-      model: MODELS.router.model,
+    const response = await callModel(MODELS.router, {
       messages: [
         { role: "system", content: PAGE_ACTION_ROUTER_PROMPT },
         { role: "user", content: String(message).slice(0, 2000) },
       ],
-      max_tokens: 30,
+      // 100, not 30: GPT-OSS reasons on every call even at reasoning_effort "low"
+      // (can't be fully disabled), and that reasoning eats into max_tokens before
+      // the JSON answer — 30 was too tight and 400'd ("Failed to generate JSON").
+      max_tokens: 100,
       temperature: 0,
       response_format: { type: "json_object" },
     });

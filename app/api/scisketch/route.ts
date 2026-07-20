@@ -18,7 +18,7 @@
 // the main chat flow (e.g. a "Generate Diagram" action elsewhere in the UI).
 
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 
 const MERMAID_TYPES = [
   "graph",
@@ -42,8 +42,6 @@ export async function POST(request: Request) {
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (!openRouterKey) throw new Error("Missing OpenRouter API Key");
 
-    const openai = getClient(MODELS.generator.provider);
-
     const systemPrompt = `You generate clean, well-structured Mermaid diagrams for academic/educational use.
 
 Rules:
@@ -58,8 +56,7 @@ Rules:
       context ? `\n\nContext: ${context}` : ''
     }`;
 
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

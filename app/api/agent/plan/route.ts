@@ -6,9 +6,9 @@
 // scrollTo) referencing those elements by id. This is a proposal only — the
 // extension shows it to the student for approval before anything executes;
 // nothing here touches a page directly. Modeled on app/api/summary/route.ts's
-// getClient(MODELS.generator.provider) + JSON response_format pattern.
+// callModel(MODELS.generator, ...) + JSON response_format pattern.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PAGE_ACTION_PLAN_PROMPT } from "@/lib/ai/prompts";
 
@@ -26,9 +26,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const validIds = new Set(elements.map((el: any) => el.id));
-    const client = getClient(MODELS.generator.provider);
-    const response = await client.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: PAGE_ACTION_PLAN_PROMPT },
         { role: "user", content: `Elements:\n${JSON.stringify(elements).slice(0, 12000)}\n\nInstruction: ${instruction}` },

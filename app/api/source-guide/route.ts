@@ -1,6 +1,6 @@
 // app/api/source-guide/route.ts
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -36,8 +36,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const openai = getClient(MODELS.generator.provider);
-
     // Generate source guide
     const systemPrompt = `You are an expert study guide creator. Analyze the provided document content and generate a helpful source guide.
 
@@ -63,8 +61,7 @@ export async function POST(request: Request) {
 
     Generate 5-7 suggestions that would help a student understand this document better.`;
 
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }

@@ -4,7 +4,7 @@
 // correct option); this handles the open-ended ones by comparing the student's
 // answer to the model answer + rubric and awarding partial marks with feedback.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -24,9 +24,8 @@ Respond ONLY with JSON:
 - "feedback": one or two sentences on what was right and what was missing. If the answer is empty, award 0 and say what a good answer would include.`;
 
   try {
-    const openai = getClient(MODELS.generator.provider);
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    // generatorPrecise: a disputed exam grade is a trust failure, not a quality nit.
+    const response = await callModel(MODELS.generatorPrecise, {
       messages: [
         { role: "system", content: system },
         { role: "user", content: JSON.stringify({ items }) },

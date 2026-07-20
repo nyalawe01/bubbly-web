@@ -6,7 +6,7 @@
 // Each returns { title, content, metadataLabel } — content is the raw generated
 // payload stored on notebook_assets.content; metadataLabel is a short display line.
 
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { fetchSourceContent } from "@/lib/ai/vault";
 import { postProcessQuiz } from "@/lib/ai/quiz";
 import {
@@ -33,9 +33,7 @@ const DIFFICULTY_MAP: Record<string, string> = {
 };
 
 async function complete(system: string, user: string, maxTokens: number) {
-  const openai = getClient(MODELS.generator.provider);
-  const response = await openai.chat.completions.create({
-    model: MODELS.generator.model,
+  const response = await callModel(MODELS.generator, {
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -82,10 +80,12 @@ export async function generateQuizContent(supabase: any, userId: string, config:
         .join("\n");
   }
 
-  // max_tokens 6000 (not 8000): Groq's on-demand tier caps requests at 12,000
-  // tokens/min and max_tokens counts as RESERVED against that, not just what's
-  // actually generated — 8000 plus a full system+context prompt was tipping real
-  // requests over the limit. See app/api/quiz/route.ts for the same fix.
+  // max_tokens 6000: enough for a real 35-question, all-types quiz (~5000 tokens
+  // observed) — deliberately NOT shrunk to fit Groq's gpt-oss-120b free-tier 8K
+  // tokens/min cap, since a large quiz's prompt + 6000 can exceed that on its own.
+  // That's fine: callModel()'s fallback ladder treats Groq's 413 ("too large") as a
+  // failover trigger, so oversized requests transparently retry on the OpenRouter
+  // Gemini candidate instead of truncating output to force-fit the smaller tier.
   const rawQuiz = await complete(system, user, 6000);
   const quiz = postProcessQuiz(rawQuiz, documentImages.map((img) => img.url));
   return {
@@ -151,12 +151,10 @@ ${sourceContent ? `\nSource material (ground the outline in this, don't invent f
   const outlineSlides: any[] = outline.slides || [];
   if (outlineSlides.length === 0) throw new Error("Outline generation failed to produce any slides.");
 
-  const openai = getClient(MODELS.generator.provider);
   const renderedSlides = await Promise.all(
     outlineSlides.map(async (slide: any) => {
       try {
-        const renderResponse = await openai.chat.completions.create({
-          model: MODELS.generator.model,
+        const renderResponse = await callModel(MODELS.generator, {
           messages: [
             { role: "system", content: SLIDE_RENDER_PROMPT },
             {
@@ -209,9 +207,7 @@ ${GENERATED_CONTEXT_RULES}
 You're turning the student's own notes into a structured study guide. Format with ## main topics,
 ### subtopics, **bold** key definitions, bullet lists, numbered steps for processes, tables for
 comparisons, and a few practice questions at the end. Turn messy notes into a clean, easy-to-study outline.`;
-    const openai = getClient(MODELS.generator.provider);
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: system },
         { role: "user", content: base + "Generate a comprehensive, well-structured study guide based on the context above." },

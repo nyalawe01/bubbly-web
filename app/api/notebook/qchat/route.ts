@@ -5,7 +5,7 @@
 // (state.qchats[questionId]) — it deliberately never touches the global chat
 // history.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
@@ -39,10 +39,7 @@ ${explanation ? `EXPLANATION: ${explanation}` : ""}`;
   ];
 
   try {
-    const tier = MODELS.chatFast;
-    const openai = getClient(tier.provider);
-    const response = await openai.chat.completions.create({
-      model: tier.model,
+    const response = await callModel(MODELS.chatFast, {
       messages,
       temperature: 0.5,
       max_tokens: 900,

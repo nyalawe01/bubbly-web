@@ -6,7 +6,7 @@
 // chat turn. Called fire-and-forget right after a new chat is created, so it never
 // blocks the message from sending.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 
 const TITLE_SYSTEM_PROMPT = `Read the student's message and write a short chat title that captures what they
 actually want help with — simplified and accurate, not a copy of their wording.
@@ -27,9 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "message required" }, { status: 400 });
     }
 
-    const client = getClient(MODELS.router.provider);
-    const response = await client.chat.completions.create({
-      model: MODELS.router.model,
+    const response = await callModel(MODELS.router, {
       messages: [
         { role: "system", content: TITLE_SYSTEM_PROMPT },
         { role: "user", content: String(message).slice(0, 2000) },

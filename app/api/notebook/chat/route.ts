@@ -5,7 +5,7 @@
 // returns { reply, updatedContent } — when the student asked for a change,
 // updatedContent is the full new content in the same schema; otherwise null.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const maxDuration = 120;
@@ -41,9 +41,7 @@ Never alter the schema/keys. Never invent fields.`;
   ];
 
   try {
-    const openai = getClient(MODELS.generator.provider);
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages,
       temperature: 0.3,
       max_tokens: 8000,

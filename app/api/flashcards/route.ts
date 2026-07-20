@@ -1,6 +1,6 @@
 // app/api/flashcards/route.ts
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchSourceContent } from "@/lib/ai/vault";
 import { FLASHCARD_CONTRACT } from "@/lib/ai/prompts";
@@ -24,7 +24,6 @@ export async function POST(request: Request) {
 
     const sourceContent = sources?.length ? await fetchSourceContent(supabase, sources, user.id, 50) : '';
 
-    const openai = getClient(MODELS.generator.provider);
     const numCards = CARD_COUNTS[cardCount] ?? CARD_COUNTS.standard;
 
     const systemPrompt = `${FLASHCARD_CONTRACT}
@@ -38,8 +37,7 @@ Difficulty: ${difficulty || 'medium'}. Generate ${numCards} cards.`;
       userPrompt += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
     }
 
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    const response = await callModel(MODELS.generator, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

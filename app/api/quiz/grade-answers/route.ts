@@ -8,7 +8,7 @@
 // at a semantic-match threshold, and the student's answer may be written in
 // a different language than the question was asked in.
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -47,9 +47,10 @@ Respond ONLY with JSON:
 - "feedback": one short sentence on what was right or missing. If the answer is empty, score 0.`;
 
   try {
-    const openai = getClient(MODELS.generator.provider);
-    const response = await openai.chat.completions.create({
-      model: MODELS.generator.model,
+    // generatorPrecise, not generator: a wrong AI grade is a trust failure/support
+    // ticket, not a quality nit — worth the fraction-of-a-cent extra for a stronger
+    // model than the bulk-content tier, off the free Groq tier entirely.
+    const response = await callModel(MODELS.generatorPrecise, {
       messages: [
         { role: "system", content: system },
         { role: "user", content: JSON.stringify({ items }) },

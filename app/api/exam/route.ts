@@ -1,6 +1,6 @@
 // app/api/exam/route.ts
 import { NextResponse } from "next/server";
-import { getClient, MODELS } from "@/lib/ai/models";
+import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchSourceContent } from "@/lib/ai/vault";
 import { GLOBAL_STYLE, GENERATED_CONTEXT_RULES, EXAM_CONTRACT } from "@/lib/ai/prompts";
@@ -24,8 +24,6 @@ export async function POST(request: Request) {
 
     const documentContext = await fetchSourceContent(supabase, sourceIds, user.id, 50);
     if (!documentContext) throw new Error("Failed to retrieve document context from the vault.");
-
-    const openai = getClient(MODELS.generator.provider);
 
     let userPrompt = `CONTEXT:\n${documentContext}\n\n`;
 
@@ -51,8 +49,7 @@ The guide should turn messy notes into a structured, easy-to-study outline.`;
 
       userPrompt += "Generate a comprehensive, well-structured study guide based on the context above.";
 
-      const response = await openai.chat.completions.create({
-        model: MODELS.generator.model,
+      const response = await callModel(MODELS.generator, {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -85,8 +82,7 @@ ${GENERATED_CONTEXT_RULES}`;
 
       userPrompt += `Generate a practice exam worth ${config?.count ? config.count * 2 : 20} total marks, difficulty level: ${config?.difficulty || 'medium'}.`;
 
-      const response = await openai.chat.completions.create({
-        model: MODELS.generator.model,
+      const response = await callModel(MODELS.generator, {
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
