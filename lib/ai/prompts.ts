@@ -311,58 +311,30 @@ ${UNIVERSAL_GENERATOR_RULES}`;
 
 export const QUIZ_CONTRACT = `${GLOBAL_STYLE}
 
-Generate a quiz. Most questions should be multiple-choice ("mcq"); mix in a few of the other types
-below where the material genuinely supports them. Return JSON ONLY.
+Generate a quiz. Mostly "mcq", mixing in the other types below where the material supports them.
+Return JSON ONLY.
 
-Distractor quality (applies at EVERY difficulty level — "easy" is never an excuse for lazy wrong
-options):
-- A distractor must be something a student who skimmed but didn't truly understand the material
-  could plausibly pick. Same category, same granularity, same topic area as the correct answer.
-- Never make distractors obviously shorter, vaguer, or less specific than the correct answer — that
-  length/specificity tell is itself the giveaway. Match the correct answer's length and phrasing style.
-- Never put absolute qualifiers ("always", "never", "all", "none", "only") on just the wrong options
-  as a tell — either avoid them entirely or use them on the correct option too sometimes.
-- No "all of the above", "none of the above", or joke/throwaway options.
-- Prefer distractors built from real near-misses in the source material: a related-but-wrong concept,
-  a common misconception, an adjacent term, an off-by-one detail — not invented nonsense.
+Distractors, at every difficulty ("easy" is not an excuse for lazy wrong options): same category,
+granularity and phrasing length as the correct answer — no obvious length/vagueness tell. No absolute
+qualifiers ("always"/"never"/"all"/"none") used only on wrong options. No "all/none of the above".
+Build them from real near-misses (a misconception, an adjacent term, an off-by-one) not nonsense.
+Vary which slot (A/B/C/D) holds the correct answer as you write — the app also hard-shuffles and
+breaks up 3-in-a-row runs after generation, so this doesn't need to be perfect.
 
-Answer position: don't default to always writing the correct option first. Vary which slot (A/B/C/D)
-holds the correct answer across the set as you write — the app will also enforce a hard shuffle and
-break up any run of 3+ same-letter answers after generation, so this doesn't need to be perfect.
-
-Every question includes a one-sentence explanation of why the answer is right. Keep questions
-unambiguous — one defensible correct answer only. Produce exactly the requested count. Mix difficulty.
+One-sentence explanation per question. One defensible correct answer only. Exact requested count.
+Mix difficulty.
 
 QUESTION TYPES — set "type" on every question:
+1. "mcq" (default): { "id", "type", "q", "options": [4 strings], "correctIndex": 0-3, "explanation", "difficulty" }
+2. "fill_blank" — blank/short-answer, graded later by meaning (any language, not exact wording):
+   { "id", "type", "q", "modelAnswer", "explanation", "difficulty" }
+3. "listing" — "name N examples/parts of X"; expectedCount 2-6; modelAnswers = acceptable pool (order-free):
+   { "id", "type", "q", "expectedCount", "modelAnswers": [strings], "explanation", "difficulty" }
+4. "diagram" — ONLY if a document image is given in CONTEXT below (never invent a URL); reuse its exact
+   imageUrl; ask to label/name a shown part or a labeled part's function:
+   { "id", "type", "imageUrl", "q", "modelAnswer", "explanation", "difficulty" }
 
-1. "mcq" (default, majority of the quiz):
-{ "id": number, "type": "mcq", "q": string, "options": [string, string, string, string],
-  "correctIndex": 0|1|2|3, "explanation": string, "difficulty": "easy"|"medium"|"hard" }
-
-2. "fill_blank" — a sentence with a key term/concept missing, or a short-answer question. Graded later
-by meaning, not exact wording, and the student may answer in a different language than the question —
-so "modelAnswer" should be the clearest canonical answer (grading handles paraphrase/translation):
-{ "id": number, "type": "fill_blank", "q": string, "modelAnswer": string, "explanation": string,
-  "difficulty": "easy"|"medium"|"hard" }
-
-3. "listing" — "name N examples/types/parts of X" style questions. "expectedCount" is how many items
-the student must supply (2-6); "modelAnswers" is the pool of acceptable reference answers, at least
-"expectedCount" items, order doesn't matter for credit:
-{ "id": number, "type": "listing", "q": string, "expectedCount": number, "modelAnswers": [string, ...],
-  "explanation": string, "difficulty": "easy"|"medium"|"hard" }
-
-4. "diagram" — ONLY emit this type if a document image is explicitly supplied to you in the CONTEXT
-below (with its own URL). Never invent an imageUrl or claim an image exists if none was given. Reuse
-the EXACT supplied "imageUrl" verbatim. Ask the student to label/name a part shown in the image, or
-name a labeled part's function/use — whichever the image's description supports:
-{ "id": number, "type": "diagram", "imageUrl": string, "q": string, "modelAnswer": string,
-  "explanation": string, "difficulty": "easy"|"medium"|"hard" }
-
-Schema:
-{
-  "title": string,
-  "questions": [ /* objects matching one of the 4 shapes above, keyed by "type" */ ]
-}
+Schema: { "title": string, "questions": [ /* objects above, keyed by "type" */ ] }
 ${UNIVERSAL_GENERATOR_RULES}`;
 
 export const EXAM_CONTRACT = `${GLOBAL_STYLE}

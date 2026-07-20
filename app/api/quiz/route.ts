@@ -82,7 +82,12 @@ Exactly ${numQuestions} questions at ${difficulty} difficulty.`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 8000,
+      // Groq's on-demand tier caps requests at 12,000 tokens/min, and max_tokens counts
+      // against that cap as RESERVED, not just what's actually generated. 8000 was fine
+      // with the old short prompt; the richer QUIZ_CONTRACT + a full 8000-char CONTEXT
+      // block was tipping real (source-grounded) requests over the limit and 500ing.
+      // 6000 comfortably covers even a 35-question, all-types quiz (~5000 tokens observed).
+      max_tokens: 6000,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
