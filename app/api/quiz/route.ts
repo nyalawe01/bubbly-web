@@ -10,6 +10,7 @@ import { getClient, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchSourceContent } from "@/lib/ai/vault";
 import { QUIZ_CONTRACT } from "@/lib/ai/prompts";
+import { postProcessQuiz } from "@/lib/ai/quiz";
 
 const QUESTION_COUNTS: Record<string, number> = { fewer: 20, standard: 25, more: 35 };
 
@@ -33,6 +34,21 @@ export async function POST(request: Request) {
 
     const sourceContent = sources?.length ? await fetchSourceContent(supabase, sources, user.id, 50) : '';
 
+    // Diagrams the model is allowed to reference — only images actually extracted from
+    // these source documents (direct uploads + DOCX/PPTX embedded media; PDFs don't
+    // extract images yet). Offering them by URL lets the model ask a genuine "label this
+    // part" / "what does this part do" question instead of only ever working from text.
+    let documentImages: { url: string; ai_description: string | null }[] = [];
+    if (sources?.length) {
+      const { data: images } = await supabase
+        .from('vault_document_images')
+        .select('url, ai_description')
+        .eq('user_id', user.id)
+        .in('document_id', sources)
+        .limit(10);
+      documentImages = images || [];
+    }
+
     const difficultyMap: Record<string, string> = {
       easy: "basic and fundamental concepts",
       medium: "intermediate concepts with some complexity",
@@ -52,6 +68,14 @@ Exactly ${numQuestions} questions at ${difficulty} difficulty.`;
       userPrompt += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
     }
 
+    if (documentImages.length) {
+      userPrompt += `\n\nDOCUMENT IMAGES (only use these exact URLs for "diagram" questions, and only if a question` +
+        ` about the image is genuinely answerable — skip decorative/irrelevant ones):\n` +
+        documentImages
+          .map((img, i) => `${i + 1}. imageUrl: ${img.url}\n   description: ${img.ai_description || "(no description)"}`)
+          .join("\n");
+    }
+
     const response = await openai.chat.completions.create({
       model: MODELS.generator.model,
       messages: [
@@ -63,7 +87,8 @@ Exactly ${numQuestions} questions at ${difficulty} difficulty.`;
       response_format: { type: "json_object" },
     });
 
-    const quiz = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const rawQuiz = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const quiz = postProcessQuiz(rawQuiz, documentImages.map((img) => img.url));
 
     await supabase.from('quiz_history').insert({
       user_id: user.id,

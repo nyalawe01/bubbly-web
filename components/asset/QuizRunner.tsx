@@ -4,8 +4,13 @@ import { ArrowLeft, ArrowRight, Check, X, RotateCcw, Trophy } from "lucide-react
 import { Breadcrumb } from "./Breadcrumb";
 import { QuestionChat, type QMsg } from "./QuestionChat";
 
-// content: { title, questions: [{ q, options[4], correctIndex, explanation }] }
-// state:   { phase, currentIndex, answers:{idx:optIdx}, score:{obtained,total}, qchats:{idx:QMsg[]} }
+// content: { title, questions: [...] } — each question has "type" ("mcq" default):
+//   mcq:        { type, q, options[4], correctIndex, explanation }
+//   fill_blank: { type, q, modelAnswer, explanation }
+//   listing:    { type, q, expectedCount, modelAnswers[], explanation }
+//   diagram:    { type, q, imageUrl, modelAnswer, explanation } — text-input like fill_blank, with an image
+// state: { phase, currentIndex, answers:{idx: optIdx|string|string[]}, score:{obtained,total},
+//          grading:{idx: {correct,score,feedback}} (non-mcq only), qchats:{idx:QMsg[]} }
 interface QuizRunnerProps {
   content: any;
   state: any;
@@ -15,12 +20,13 @@ interface QuizRunnerProps {
 export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
   const questions: any[] = content?.questions || [];
   const phase: string = state?.phase || "not_started";
-  const answers: Record<string, number> = state?.answers || {};
+  const answers: Record<string, number | string | string[]> = state?.answers || {};
   const qchats: Record<string, QMsg[]> = state?.qchats || {};
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [reviewIdx, setReviewIdx] = useState(0);
+  const [grading, setGrading] = useState(false);
 
   const patch = (p: any) => onState({ ...state, ...p });
 
@@ -80,13 +86,19 @@ export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
           <button onClick={() => setReviewing(false)} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">← Back to results</button>
           <span className="text-xs text-[var(--text-secondary)]">Reviewing {reviewIdx + 1} / {questions.length}</span>
         </div>
-        <QuestionReview q={q} chosen={chosen} />
+        <QuestionReview q={q} chosen={chosen} gradeResult={(state.grading || {})[reviewIdx]} />
         <QuestionChat
           ctx={{
             question: q.q,
-            options: q.options,
-            correctAnswer: q.options?.[q.correctIndex],
-            studentAnswer: chosen != null ? q.options?.[chosen] : "(not answered)",
+            options: q.type === "mcq" || !q.type ? q.options : undefined,
+            correctAnswer:
+              q.type === "listing" ? (q.modelAnswers || []).join(", ") :
+              q.type === "fill_blank" || q.type === "diagram" ? q.modelAnswer :
+              q.options?.[q.correctIndex],
+            studentAnswer:
+              q.type === "listing" ? (Array.isArray(chosen) && chosen.some(Boolean) ? chosen.join(", ") : "(not answered)") :
+              q.type === "fill_blank" || q.type === "diagram" ? (chosen || "(not answered)") :
+              chosen != null ? q.options?.[chosen as number] : "(not answered)",
             explanation: q.explanation,
           }}
           thread={qchats[reviewIdx] || []}
@@ -107,17 +119,67 @@ export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
   // ---- in progress (taking) ----
   const idx = state.currentIndex ?? 0;
   const q = questions[idx];
-  const answered = (i: number) => answers[i] != null;
+  const answered = (i: number) => {
+    const qq = questions[i];
+    const a = answers[i];
+    if (!qq) return false;
+    if (qq.type === "listing") return Array.isArray(a) && a.some((x: string) => x && x.trim());
+    if (qq.type === "fill_blank" || qq.type === "diagram") return typeof a === "string" && a.trim().length > 0;
+    return a != null;
+  };
   const isLast = idx === questions.length - 1;
 
-  const submit = () => {
+  const submit = async () => {
+    setGrading(true);
     let obtained = 0;
+    const gradableItems: any[] = [];
+
     questions.forEach((qq, i) => {
-      if (answers[i] === qq.correctIndex) obtained += 1;
+      if (qq.type === "listing") {
+        gradableItems.push({ id: String(i), type: "listing", question: qq.q, answers: answers[i] || [], modelAnswers: qq.modelAnswers });
+      } else if (qq.type === "fill_blank" || qq.type === "diagram") {
+        gradableItems.push({ id: String(i), type: "fill_blank", question: qq.q, answer: answers[i] || "", modelAnswer: qq.modelAnswer });
+      } else if (answers[i] === qq.correctIndex) {
+        obtained += 1;
+      }
     });
+
+    const gradingByIdx: Record<number, any> = {};
+    if (gradableItems.length) {
+      try {
+        const res = await fetch("/api/quiz/grade-answers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: gradableItems }),
+        });
+        const data = await res.json();
+        const results: any[] = data.results || [];
+        const byId = new Map(results.map((r) => [r.id, r]));
+        questions.forEach((qq, i) => {
+          const r = byId.get(String(i));
+          if (!r) return;
+          gradingByIdx[i] = r;
+          if (qq.type === "listing") {
+            const expected = qq.expectedCount || (qq.modelAnswers?.length ?? 1);
+            obtained += Math.min(1, (r.matchedCount || 0) / expected);
+          } else if (qq.type === "fill_blank" || qq.type === "diagram") {
+            obtained += r.correct ? 1 : 0;
+          }
+        });
+      } catch {
+        // Grading service failed — those questions just don't add to the score
+        // rather than blocking submission entirely.
+      }
+    }
+
+    setGrading(false);
     setConfirmOpen(false);
     setReviewing(false);
-    patch({ phase: "submitted", score: { obtained, total: questions.length } });
+    patch({
+      phase: "submitted",
+      score: { obtained: Math.round(obtained * 100) / 100, total: questions.length },
+      grading: gradingByIdx,
+    });
   };
 
   return (
@@ -125,25 +187,52 @@ export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
       <Breadcrumb total={questions.length} current={idx} isAnswered={answered} onJump={(i) => patch({ currentIndex: i })} />
       <div className="text-xs text-[var(--text-secondary)] mb-2">Question {idx + 1} of {questions.length}</div>
       <p className="text-lg md:text-xl font-medium text-[var(--text-primary)] mb-5">{q?.q}</p>
-      <div className="space-y-2.5">
-        {(q?.options || []).map((opt: string, oi: number) => {
-          const selected = answers[idx] === oi;
-          return (
-            <button
-              key={oi}
-              onClick={() => patch({ answers: { ...answers, [idx]: oi } })}
-              className={`w-full flex items-center gap-3 text-left rounded-xl border px-4 py-3 transition-all ${
-                selected ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-[var(--bg-input)] hover:bg-[var(--bg-hover)]"
-              }`}
-            >
-              <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-semibold flex-shrink-0 ${selected ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}>
-                {String.fromCharCode(65 + oi)}
-              </span>
-              <span className="text-sm text-[var(--text-primary)]">{opt}</span>
-            </button>
-          );
-        })}
-      </div>
+
+      {q?.type === "fill_blank" || q?.type === "diagram" ? (
+        <div>
+          {q.type === "diagram" && q.imageUrl && (
+            <img
+              src={q.imageUrl}
+              alt="Diagram for this question"
+              className="w-full max-h-80 object-contain rounded-xl border border-[var(--border)] mb-4 bg-[var(--bg-input)]"
+            />
+          )}
+          <textarea
+            value={answers[idx] || ""}
+            onChange={(e) => patch({ answers: { ...answers, [idx]: e.target.value } })}
+            placeholder="Type your answer…"
+            rows={3}
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-input)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] resize-none"
+          />
+        </div>
+      ) : q?.type === "listing" ? (
+        <ListingQuestion
+          key={idx}
+          q={q}
+          value={Array.isArray(answers[idx]) ? (answers[idx] as string[]) : []}
+          onChange={(v: string[]) => patch({ answers: { ...answers, [idx]: v } })}
+        />
+      ) : (
+        <div className="space-y-2.5">
+          {(q?.options || []).map((opt: string, oi: number) => {
+            const selected = answers[idx] === oi;
+            return (
+              <button
+                key={oi}
+                onClick={() => patch({ answers: { ...answers, [idx]: oi } })}
+                className={`w-full flex items-center gap-3 text-left rounded-xl border px-4 py-3 transition-all ${
+                  selected ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)] bg-[var(--bg-input)] hover:bg-[var(--bg-hover)]"
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-semibold flex-shrink-0 ${selected ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--text-secondary)]"}`}>
+                  {String.fromCharCode(65 + oi)}
+                </span>
+                <span className="text-sm text-[var(--text-primary)]">{opt}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mt-6">
         <button
@@ -174,8 +263,9 @@ export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
 
       {confirmOpen && (
         <ConfirmSubmit
-          answeredCount={Object.keys(answers).length}
+          answeredCount={questions.filter((_, i) => answered(i)).length}
           total={questions.length}
+          grading={grading}
           onCancel={() => setConfirmOpen(false)}
           onConfirm={submit}
         />
@@ -184,7 +274,80 @@ export function QuizRunner({ content, state, onState }: QuizRunnerProps) {
   );
 }
 
-function QuestionReview({ q, chosen }: { q: any; chosen: number | undefined }) {
+function QuestionReview({ q, chosen, gradeResult }: { q: any; chosen: any; gradeResult?: any }) {
+  if (q.type === "fill_blank" || q.type === "diagram") {
+    const correct: boolean | undefined = gradeResult?.correct;
+    const answerText = typeof chosen === "string" && chosen.trim() ? chosen : null;
+    return (
+      <div>
+        {q.type === "diagram" && q.imageUrl && (
+          <img
+            src={q.imageUrl}
+            alt="Diagram for this question"
+            className="w-full max-h-80 object-contain rounded-xl border border-[var(--border)] mb-4 bg-[var(--bg-input)]"
+          />
+        )}
+        <p className="text-lg font-medium text-[var(--text-primary)] mb-4">{q.q}</p>
+        <div
+          className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm mb-2 ${
+            correct == null
+              ? "border-[var(--border)] text-[var(--text-secondary)]"
+              : correct
+              ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-300"
+          }`}
+        >
+          <span><span className="font-semibold">Your answer: </span>{answerText || "(not answered)"}</span>
+          {correct != null && (correct ? <Check size={16} /> : <X size={16} />)}
+        </div>
+        <div className="rounded-lg bg-[var(--bg-input)] border border-[var(--border)] p-3 text-sm text-[var(--text-secondary)]">
+          <span className="font-semibold text-[var(--text-primary)]">Model answer: </span>{q.modelAnswer}
+        </div>
+        {gradeResult?.feedback && (
+          <p className="text-xs text-[var(--text-secondary)] mt-2">{gradeResult.feedback}</p>
+        )}
+        {q.explanation && (
+          <div className="mt-3 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)]">
+            {q.explanation}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (q.type === "listing") {
+    const items: string[] = Array.isArray(chosen) ? chosen : [];
+    const filled = items.filter((x) => x && x.trim());
+    return (
+      <div>
+        <p className="text-lg font-medium text-[var(--text-primary)] mb-4">{q.q}</p>
+        <div className="space-y-2 mb-3">
+          {Array.from({ length: q.expectedCount || items.length || 1 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--text-primary)]">
+              {items[i] && items[i].trim() ? items[i] : <span className="text-[var(--text-secondary)]">(blank)</span>}
+            </div>
+          ))}
+        </div>
+        {gradeResult && (
+          <p className="text-xs text-[var(--text-secondary)] mb-2">
+            {gradeResult.matchedCount ?? 0} of {q.expectedCount || items.length} matched a reference answer.
+          </p>
+        )}
+        {filled.length === 0 && <p className="text-xs text-red-500 mb-2">You didn't answer this one.</p>}
+        <div className="rounded-lg bg-[var(--bg-input)] border border-[var(--border)] p-3 text-sm text-[var(--text-secondary)]">
+          <span className="font-semibold text-[var(--text-primary)]">Reference answers: </span>
+          {(q.modelAnswers || []).join(", ")}
+        </div>
+        {q.explanation && (
+          <div className="mt-3 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)]">
+            {q.explanation}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // mcq (default)
   return (
     <div>
       <p className="text-lg font-medium text-[var(--text-primary)] mb-4">{q.q}</p>
@@ -221,20 +384,100 @@ function QuestionReview({ q, chosen }: { q: any; chosen: number | undefined }) {
   );
 }
 
-function ConfirmSubmit({ answeredCount, total, onCancel, onConfirm }: { answeredCount: number; total: number; onCancel: () => void; onConfirm: () => void }) {
+function ListingQuestion({ q, value, onChange }: { q: any; value: string[]; onChange: (v: string[]) => void }) {
+  const [page, setPage] = useState(0);
+  const perPage = 5;
+  const count = Math.max(1, q.expectedCount || 2);
+  const totalPages = Math.max(1, Math.ceil(count / perPage));
+  const items = Array.from({ length: count }, (_, i) => value[i] || "");
+
+  const setItem = (i: number, v: string) => {
+    const next = [...items];
+    next[i] = v;
+    onChange(next);
+  };
+
+  const start = page * perPage;
+  const end = Math.min(count, start + perPage);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+    <div>
+      <p className="text-xs text-[var(--text-secondary)] mb-3">
+        {totalPages > 1 ? `Items ${start + 1}–${end} of ${count}` : `List ${count} item${count === 1 ? "" : "s"}`}
+      </p>
+      <div className="space-y-2.5">
+        {Array.from({ length: end - start }).map((_, i) => {
+          const itemIndex = start + i;
+          return (
+            <input
+              key={itemIndex}
+              value={items[itemIndex]}
+              onChange={(e) => setItem(itemIndex, e.target.value)}
+              placeholder={`Item ${itemIndex + 1}`}
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-input)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+          );
+        })}
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="text-xs text-[var(--text-secondary)] disabled:opacity-30"
+          >
+            ← Previous
+          </button>
+          <span className="text-xs text-[var(--text-secondary)]">Page {page + 1} / {totalPages}</span>
+          <button
+            type="button"
+            disabled={page === totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+            className="text-xs text-[var(--text-secondary)] disabled:opacity-30"
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfirmSubmit({
+  answeredCount,
+  total,
+  grading,
+  onCancel,
+  onConfirm,
+}: {
+  answeredCount: number;
+  total: number;
+  grading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={grading ? undefined : onCancel}>
       <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-[var(--text-primary)]">Submit quiz?</h3>
         <p className="text-sm text-[var(--text-secondary)] mt-1.5">
           You've answered {answeredCount} of {total}. Once you submit you'll see your marks and can review the answers.
         </p>
         <div className="flex items-center justify-end gap-2 mt-5">
-          <button onClick={onCancel} className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">
+          <button
+            disabled={grading}
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] disabled:opacity-40"
+          >
             Keep answering
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)]">
-            Yes, submit
+          <button
+            disabled={grading}
+            onClick={onConfirm}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--btn-primary)] text-[var(--btn-primary-foreground)] disabled:opacity-60"
+          >
+            {grading ? "Grading…" : "Yes, submit"}
           </button>
         </div>
       </div>

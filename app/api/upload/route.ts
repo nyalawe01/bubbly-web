@@ -16,6 +16,97 @@ const mammoth = (mammothModule as any).default || mammothModule;
 const EMBEDDING_MODELS = ['gemini-embedding-001', 'gemini-embedding-2'];
 const EMBED_DIM = 768;
 
+// Diagram-question support (see lib/ai/quiz.ts): images extracted from a source
+// document get persisted to Storage + vault_document_images so the quiz generator
+// can later reuse the EXACT image ("label the parts of this diagram") instead of
+// only working from OCR'd text. PDFs are NOT covered here — only direct raster
+// image uploads and images embedded inside DOCX/PPTX (both are cheap: the bytes
+// are already sitting right there, unlike PDF which would need page rendering).
+const MAX_EXTRACTED_IMAGES = 5;
+const MIME_BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+};
+
+interface PendingImage {
+  buffer: Buffer;
+  mimeType: string;
+  filename: string;
+  description?: string | null;
+}
+
+/** One short fast vision call for images that didn't already go through the main
+ *  OCR pass (i.e. DOCX/PPTX embedded media). Never throws — a missing caption just
+ *  means the diagram question prompt gets less context, not a failed upload. */
+async function describeImage(openai: OpenAI, buffer: Buffer, mimeType: string): Promise<string | null> {
+  const visionModels = [
+    "google/gemini-2.5-flash",
+    "google/gemini-1.5-flash:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+  ];
+  for (const visionModel of visionModels) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: visionModel,
+        max_tokens: 150,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Describe this image in one short sentence. If it's a labeled diagram (e.g. anatomy, a cycle, a process), say so and name a few of the labeled parts.",
+              },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${buffer.toString("base64")}` } },
+            ],
+          },
+        ],
+      });
+      const desc = response.choices[0]?.message?.content?.trim();
+      if (desc) return desc;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+/** Uploads one extracted image to the vault-diagrams bucket (same
+ *  upload-then-getPublicUrl pattern as app/api/image/route.ts) and rows it in
+ *  vault_document_images. Best-effort — a failure here must not fail the upload. */
+async function persistDocumentImage(
+  supabase: any,
+  openai: OpenAI | null,
+  userId: string,
+  documentId: string,
+  image: PendingImage
+): Promise<void> {
+  try {
+    const ext = image.mimeType.split('/')[1] || 'png';
+    const path = `${userId}/${documentId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('vault-diagrams')
+      .upload(path, image.buffer, { contentType: image.mimeType, upsert: false });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: publicUrlData } = supabase.storage.from('vault-diagrams').getPublicUrl(path);
+    const description = image.description ?? (openai ? await describeImage(openai, image.buffer, image.mimeType) : null);
+
+    await supabase.from('vault_document_images').insert({
+      document_id: documentId,
+      user_id: userId,
+      url: publicUrlData.publicUrl,
+      ai_description: description,
+    });
+  } catch (e) {
+    console.warn(`Failed to persist document image (${image.filename}):`, e);
+  }
+}
+
 function chunkText(text: string, maxChars = 2500) {
   const chunks: string[] = [];
   let i = 0;
@@ -105,6 +196,7 @@ export async function POST(request: Request) {
     const fileName = file.name.toLowerCase();
 
     let textContent = "";
+    const pendingImages: PendingImage[] = [];
     console.log(`Processing file: ${fileName} (${mimeType})`);
 
     if (fileName.match(/\.(xls|xlsx|csv)$/i)) {
@@ -116,6 +208,26 @@ export async function POST(request: Request) {
     } else if (fileName.match(/\.(doc|docx)$/i)) {
       const docxData = await mammoth.extractRawText({ buffer });
       textContent = docxData.value;
+      // DOCX is an OOXML zip — mammoth only pulls text, so unzip separately to also
+      // grab any embedded images for diagram questions. Legacy .doc isn't a zip and
+      // will throw here; that's fine, images are a bonus, not required.
+      try {
+        const zip = new AdmZip(buffer);
+        zip.getEntries().forEach((entry) => {
+          if (pendingImages.length >= MAX_EXTRACTED_IMAGES) return;
+          if (!entry.entryName.startsWith("word/media/")) return;
+          const ext = entry.entryName.split(".").pop()?.toLowerCase();
+          if (ext && MIME_BY_EXT[ext]) {
+            pendingImages.push({
+              buffer: entry.getData(),
+              mimeType: MIME_BY_EXT[ext],
+              filename: entry.entryName.split("/").pop() || "image",
+            });
+          }
+        });
+      } catch {
+        // Not a valid zip (legacy .doc) or extraction failed — ignore, text already captured.
+      }
     } else if (fileName.match(/\.(ppt|pptx)$/i)) {
       try {
         const zip = new AdmZip(buffer);
@@ -125,6 +237,15 @@ export async function POST(request: Request) {
             const xml = entry.getData().toString('utf8');
             const matches = xml.match(/<a:t>(.*?)<\/a:t>/g);
             if (matches) pptxText += matches.map((m) => m.replace(/<[^>]+>/g, '')).join(' ') + '\n';
+          } else if (entry.entryName.startsWith("ppt/media/") && pendingImages.length < MAX_EXTRACTED_IMAGES) {
+            const ext = entry.entryName.split(".").pop()?.toLowerCase();
+            if (ext && MIME_BY_EXT[ext]) {
+              pendingImages.push({
+                buffer: entry.getData(),
+                mimeType: MIME_BY_EXT[ext],
+                filename: entry.entryName.split("/").pop() || "image",
+              });
+            }
           }
         });
         textContent = pptxText;
@@ -180,6 +301,18 @@ export async function POST(request: Request) {
           console.warn(`Vision model ${visionModel} failed.`);
         }
       }
+
+      // Direct raster image upload (not PDF — PDF diagram extraction isn't supported yet):
+      // persist the original bytes too, reusing the OCR pass above as the caption instead
+      // of spending a second vision call on it.
+      if (!fileName.match(/\.pdf$/i) && textContent) {
+        pendingImages.push({
+          buffer,
+          mimeType: mimeType || "image/jpeg",
+          filename: file.name,
+          description: textContent.slice(0, 300),
+        });
+      }
     } else {
       textContent = new TextDecoder("utf-8").decode(arrayBuffer);
     }
@@ -202,6 +335,13 @@ export async function POST(request: Request) {
       .single();
 
     if (docError) throw new Error(`Database Error: ${docError.message}`);
+
+    if (pendingImages.length) {
+      const openaiForCaptions = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: openRouterKey });
+      await Promise.all(
+        pendingImages.map((image) => persistDocumentImage(supabase, openaiForCaptions, user.id, docData.id, image))
+      );
+    }
 
     const ai = new GoogleGenAI({ apiKey: googleKey });
     const chunks = chunkText(textContent);
