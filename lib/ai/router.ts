@@ -8,12 +8,18 @@
 import { callModel, MODELS } from "./models";
 import { ROUTER_SYSTEM_PROMPT } from "./prompts";
 
+export type ModelHint = "instant" | "expert" | "vision";
+
 export interface RouteDecision {
   needsWebSearch: boolean;
   needsDiagram: boolean;
   needsImage: boolean;
   searchQuery: string | null;
   imagePrompt: string | null;
+  // Which chat tier best fits this message — only consulted when the client's
+  // modelType is "auto"/unset (see app/api/chat/route.ts). An explicit model
+  // choice always wins over this.
+  modelHint: ModelHint;
 }
 
 const FALLBACK: RouteDecision = {
@@ -22,7 +28,10 @@ const FALLBACK: RouteDecision = {
   needsImage: false,
   searchQuery: null,
   imagePrompt: null,
+  modelHint: "instant",
 };
+
+const VALID_HINTS = new Set(["instant", "expert", "vision"]);
 
 export async function classifyIntent(message: string): Promise<RouteDecision> {
   try {
@@ -43,6 +52,7 @@ export async function classifyIntent(message: string): Promise<RouteDecision> {
       needsImage: !!parsed.needsImage,
       searchQuery: parsed.searchQuery || null,
       imagePrompt: parsed.imagePrompt || null,
+      modelHint: VALID_HINTS.has(parsed.modelHint) ? parsed.modelHint : "instant",
     };
   } catch (e) {
     // Fail closed: if classification breaks, default to plain chat rather than

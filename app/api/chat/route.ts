@@ -53,25 +53,31 @@ export async function POST(request: Request) {
     // Client fast-paths skip the classifier when intent is unambiguous. Image wins over diagram
     // if both somehow fire (a picture request should never be forced into mermaid mode).
     const routePromise: Promise<RouteDecision> = generateImage
-      ? Promise.resolve({ needsWebSearch: false, needsDiagram: false, needsImage: true, searchQuery: null, imagePrompt: message })
+      ? Promise.resolve({ needsWebSearch: false, needsDiagram: false, needsImage: true, searchQuery: null, imagePrompt: message, modelHint: "vision" })
       : generateDiagram
-      ? Promise.resolve({ needsWebSearch: false, needsDiagram: true, needsImage: false, searchQuery: null, imagePrompt: null })
+      ? Promise.resolve({ needsWebSearch: false, needsDiagram: true, needsImage: false, searchQuery: null, imagePrompt: null, modelHint: "instant" })
       : classifyIntent(message);
 
     const [queryEmbedding, vaultChunks, route] = await Promise.all([embedPromise, retrievalPromise, routePromise]);
 
+    // "auto" (also the default when the client sends nothing) defers to the
+    // classifier's modelHint instead of a fixed tier — an explicit model choice
+    // always wins and skips this entirely.
+    const resolvedModelType = !modelType || modelType === "auto" ? route.modelHint : modelType;
+
     // Semantic cache: only for a fresh, context-free, plain-chat turn — no history
     // (avoids serving a reply that depended on prior context to an unrelated
     // follow-up), no Vault notes involved (never cross-student-leak private
-    // content), no web-search/diagram/image intent, and only the default "instant"
-    // tier. See lib/ai/cache.ts + supabase/migrations/0008_ai_response_cache.sql.
+    // content), no web-search/diagram/image intent, and only the (possibly
+    // auto-resolved) "instant" tier. See lib/ai/cache.ts +
+    // supabase/migrations/0008_ai_response_cache.sql.
     const cacheEligible =
       (!history || history.length === 0) &&
       vaultChunks.length === 0 &&
       !route.needsWebSearch &&
       !route.needsDiagram &&
       !route.needsImage &&
-      (!modelType || modelType === "instant");
+      resolvedModelType === "instant";
 
     if (cacheEligible && queryEmbedding.length) {
       const { hit, payload } = await matchCache(supabase, "chat", queryEmbedding);
@@ -187,7 +193,7 @@ export async function POST(request: Request) {
     // (See lib/ai/models.ts.) callModel() fails over on a rejected create() call —
     // that happens before any stream bytes are consumed, so this is safe for the
     // streaming case too, never a mid-stream provider switch.
-    const completionStream: any = await callModel(chatModelFor(modelType), {
+    const completionStream: any = await callModel(chatModelFor(resolvedModelType), {
       messages: [
         { role: "system", content: dynamicSystemInstruction },
         ...formattedHistory,

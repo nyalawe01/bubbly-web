@@ -251,7 +251,8 @@ export const ROUTER_SYSTEM_PROMPT = `Classify the student's message. Respond ONL
   "needsDiagram": boolean,
   "needsImage": boolean,
   "searchQuery": string | null,
-  "imagePrompt": string | null
+  "imagePrompt": string | null,
+  "modelHint": "instant" | "expert" | "vision"
 }
 
 needsWebSearch: true only if the question needs current, external, or fact-lookup information the
@@ -269,7 +270,18 @@ an image of a cell membrane", "make me a picture of...".
 
 searchQuery: a short, optimized search query if needsWebSearch is true, else null.
 
-imagePrompt: a clear, descriptive image-generation prompt if needsImage is true, else null.`;
+imagePrompt: a clear, descriptive image-generation prompt if needsImage is true, else null.
+
+modelHint: used only when the student has left model selection on "Automatic" — pick the tier that
+actually fits THIS message, not a generic default:
+- "vision": the message is about an attached image, screenshot, photo, or visual content, or
+  needsImage/needsDiagram is true — anything where the reply meaningfully depends on seeing something.
+- "expert": the question requires real multi-step reasoning, rigorous derivation, deep technical/
+  research depth, or the student is clearly asking for a thorough, hard-to-get-wrong analysis — not
+  just "sounds advanced" wording.
+- "instant": everything else — quick facts, definitions, simple how-tos, casual conversation. This is
+  the right choice for the large majority of ordinary messages; don't reach for "expert" just because
+  a message is a full paragraph.`;
 
 // Appended to every generator's contract below (flashcards/quiz/exam/slides/summary).
 export const UNIVERSAL_GENERATOR_RULES = `
