@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, EyeOff } from "lucide-react";
 import { ChatInput } from "./ChatInput";
 import { ChatQuestionsForm } from "./ChatQuestionsForm";
 import { UserMessage } from "./UserMessage";
@@ -19,6 +19,7 @@ const HERO_LOTTIE_SRC = "https://lottie.host/a7719fd3-75b2-40a4-92bf-1393879984f
 
 interface ChatViewProps {
   messages: any[];
+  isIncognito?: boolean;
   isGenerating: boolean;
   inputText: string;
   setInputText: (text: string) => void;
@@ -64,6 +65,7 @@ const ACTION_KEYS = ["quiz", "flashcards", "slides", "summary", "exam"] as const
 export function ChatView(props: ChatViewProps) {
   const {
     messages,
+    isIncognito,
     isGenerating,
     inputText,
     setInputText,
@@ -154,6 +156,11 @@ export function ChatView(props: ChatViewProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+      {isIncognito && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-900/90 px-3 py-1 text-[11px] font-medium text-neutral-200 shadow-lg backdrop-blur">
+          <EyeOff size={12} /> Incognito — this chat won&apos;t be saved
+        </div>
+      )}
       <div
         ref={scrollRef}
         onScroll={handleScroll}

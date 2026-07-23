@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Share2, Pin, PinOff, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Share2, Download, Pin, PinOff, Pencil, Trash2 } from "lucide-react";
 
 interface RowMenuProps {
   pinned?: boolean;
   onShare: () => void;
+  onExport?: () => void;
   onTogglePin: () => void;
   onRename: () => void;
   onDelete: () => void;
@@ -16,7 +17,7 @@ interface RowMenuProps {
  *  fades in via CSS `group-hover` — the PARENT row must have className="group" for
  *  that to work — and stays visible while its own dropdown is open so it doesn't
  *  vanish out from under the mouse mid-interaction. */
-export function RowMenu({ pinned, onShare, onTogglePin, onRename, onDelete, colors }: RowMenuProps) {
+export function RowMenu({ pinned, onShare, onExport, onTogglePin, onRename, onDelete, colors }: RowMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -57,6 +58,11 @@ export function RowMenu({ pinned, onShare, onTogglePin, onRename, onDelete, colo
           <button onClick={run(onShare)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-lg ${colors.bgHover} ${colors.textPrimary}`}>
             <Share2 size={14} /> Share
           </button>
+          {onExport && (
+            <button onClick={run(onExport)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-lg ${colors.bgHover} ${colors.textPrimary}`}>
+              <Download size={14} /> Export
+            </button>
+          )}
           <button onClick={run(onTogglePin)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-lg ${colors.bgHover} ${colors.textPrimary}`}>
             {pinned ? <PinOff size={14} /> : <Pin size={14} />} {pinned ? "Unpin" : "Pin"}
           </button>

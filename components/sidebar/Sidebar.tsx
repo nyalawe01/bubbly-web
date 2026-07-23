@@ -15,6 +15,7 @@ import {
   GraduationCap,
   X,
   ChevronDown,
+  EyeOff,
 } from "lucide-react";
 import { Notebooks } from "./Notebooks";
 import { Recents } from "./Recents";
@@ -31,12 +32,14 @@ interface SidebarProps {
   categorizedChats: Record<string, any[]>;
   currentChatId: string | null;
   onStartNewChat: () => void;
+  onStartIncognitoChat: () => void;
   onLoadChat: (chat: any) => void;
   onOpenAsset: (asset: any) => void;
   onPinChat: (chatId: string) => void;
   onRenameChat: (chatId: string, title: string) => void;
   onDeleteChat: (chatId: string) => void;
   onShareChat: (chat: any) => void;
+  onExportChat: (chat: any) => void;
   onPinAsset: (asset: any) => void;
   onRenameAsset: (asset: any, title: string) => void;
   onDeleteAsset: (asset: any) => void;
@@ -65,12 +68,14 @@ export function Sidebar({
   categorizedChats,
   currentChatId,
   onStartNewChat,
+  onStartIncognitoChat,
   onLoadChat,
   onOpenAsset,
   onPinChat,
   onRenameChat,
   onDeleteChat,
   onShareChat,
+  onExportChat,
   onPinAsset,
   onRenameAsset,
   onDeleteAsset,
@@ -159,7 +164,7 @@ export function Sidebar({
       </div>
 
       {/* Fixed New Chat action — pinned, never scrolls, never shown "active". */}
-      <div className="px-2 pb-1.5">
+      <div className="px-2 pb-1.5 space-y-1">
         <button
           onClick={onStartNewChat}
           className={`icon-motion w-full flex items-center gap-2.5 rounded-lg transition-colors ${colors.textPrimary} ${colors.bgHover} border ${colors.borderBase} ${
@@ -168,6 +173,16 @@ export function Sidebar({
         >
           <Plus size={16} className="flex-shrink-0" />
           {showContent && <span className="text-[13px] font-medium truncate">{t("nav.newChat")}</span>}
+        </button>
+        <button
+          onClick={onStartIncognitoChat}
+          title="Start an incognito chat — not saved to history"
+          className={`icon-motion w-full flex items-center gap-2.5 rounded-lg transition-colors ${colors.textSecondary} ${colors.bgHover} ${
+            showContent ? "px-2.5 py-1.5" : "justify-center py-1.5"
+          }`}
+        >
+          <EyeOff size={14} className="flex-shrink-0" />
+          {showContent && <span className="text-[12px] font-medium truncate">Incognito chat</span>}
         </button>
       </div>
 
@@ -221,6 +236,7 @@ export function Sidebar({
               onRename={onRenameChat}
               onDelete={onDeleteChat}
               onShare={onShareChat}
+              onExport={onExportChat}
               colors={colors}
               theme={theme}
             />

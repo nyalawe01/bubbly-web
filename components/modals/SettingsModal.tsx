@@ -15,10 +15,14 @@ interface SettingsModalProps {
   initialTab?: Tab;
   user: any;
   onSignOut: () => void;
+  onDeleteAccount: () => void;
+  onDeleteAllChats: () => void;
+  onExportData: () => void;
+  onSetImproveModel: (value: boolean) => void;
   colors: any;
 }
 
-export function SettingsModal({ open, onClose, initialTab = "general", user, onSignOut, colors }: SettingsModalProps) {
+export function SettingsModal({ open, onClose, initialTab = "general", user, onSignOut, onDeleteAccount, onDeleteAllChats, onExportData, onSetImproveModel, colors }: SettingsModalProps) {
   const { preference, setPreference, fontPref, setFontPref } = useTheme();
   const { lang, setLang, t } = useI18n();
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -39,20 +43,25 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      {/* max-h keeps this modal always floating with margin from top/bottom on any
-          screen size, instead of a fixed pixel height that touched the viewport edges
-          on shorter screens. */}
-      <div onClick={(e) => e.stopPropagation()} className={`flex w-full max-w-[720px] max-h-[85vh] overflow-hidden rounded-2xl border ${colors.borderBase} ${colors.bgCard} shadow-2xl`}>
-        {/* Sidebar */}
-        <aside className={`w-44 shrink-0 ${colors.bgSidebar} p-3`}>
-          <h2 className={`px-2.5 pb-3 pt-1.5 text-[15px] font-semibold ${colors.textPrimary}`}>Settings</h2>
-          <nav className="space-y-0.5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+      {/* Full-screen sheet on mobile (no fixed-width sidebar to overflow the
+          viewport); the desktop two-pane layout only kicks in at sm+, where
+          max-h keeps it floating with margin from top/bottom instead of a
+          fixed pixel height that touched the viewport edges on shorter
+          screens. */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`flex h-full w-full max-w-full flex-col overflow-hidden border-0 sm:h-auto sm:max-h-[85vh] sm:max-w-[720px] sm:flex-row sm:rounded-2xl sm:border ${colors.borderBase} ${colors.bgCard} shadow-2xl`}
+      >
+        {/* Sidebar — horizontal scrollable tab strip on mobile, vertical nav on sm+ */}
+        <aside className={`shrink-0 ${colors.bgSidebar} p-3 sm:w-44`}>
+          <h2 className={`hidden px-2.5 pb-3 pt-1.5 text-[15px] font-semibold sm:block ${colors.textPrimary}`}>Settings</h2>
+          <nav className="flex gap-1 overflow-x-auto sm:block sm:space-y-0.5 sm:overflow-visible">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = tab === item.id;
               return (
-                <button key={item.id} onClick={() => setTab(item.id)} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>
+                <button key={item.id} onClick={() => setTab(item.id)} className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors sm:w-full ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}>
                   <Icon className="h-3.5 w-3.5" /> {item.label}
                 </button>
               );
@@ -150,7 +159,7 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                 </div>
                 <div className="py-3 flex items-center justify-between">
                   <span className="text-[12px] font-medium text-red-500">Delete account</span>
-                  <button className="rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete</button>
+                  <button onClick={onDeleteAccount} className="rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete</button>
                 </div>
               </div>
             )}
@@ -161,18 +170,23 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                   <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Improve the model for everyone</p>
                   <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Allow your content to be used to train our models and improve our services.</p>
                   <div className="mt-2.5 flex items-center gap-2">
-                    <button className="relative h-5 w-9 rounded-full bg-neutral-300 dark:bg-neutral-700"><span className="absolute left-1 top-1 h-3 w-3 rounded-full bg-white transition-all dark:bg-neutral-900"></span></button>
-                    <span className={`text-[12px] ${colors.textSecondary}`}>Off</span>
+                    <button
+                      onClick={() => onSetImproveModel(!user?.improveModel)}
+                      className={`relative h-5 w-9 rounded-full transition-colors ${user?.improveModel ? "bg-[var(--accent)]" : "bg-neutral-300 dark:bg-neutral-700"}`}
+                    >
+                      <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all dark:bg-neutral-900 ${user?.improveModel ? "left-5" : "left-1"}`}></span>
+                    </button>
+                    <span className={`text-[12px] ${colors.textSecondary}`}>{user?.improveModel ? "On" : "Off"}</span>
                   </div>
                 </div>
                 <div className={`border-b ${colors.borderBase} pb-3`}>
-                  <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Shared links</p>
+                  <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Export data</p>
                   <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Export your data including account information and chat history.</p>
-                  <button className={`mt-2.5 rounded-full border ${colors.borderBase} ${colors.bgInput} px-4 py-1 text-[12px] font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>Export data</button>
+                  <button onClick={onExportData} className={`mt-2.5 rounded-full border ${colors.borderBase} ${colors.bgInput} px-4 py-1 text-[12px] font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>Export data</button>
                 </div>
                 <div>
                   <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Delete all chats</p>
-                  <button className="mt-1.5 rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete all</button>
+                  <button onClick={onDeleteAllChats} className="mt-1.5 rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete all</button>
                 </div>
               </div>
             )}
@@ -187,8 +201,9 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                   <p className={`text-[12px] ${colors.textSecondary}`}>AI-powered academic platform for smarter learning.</p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Terms of Use <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
-                  <button className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Privacy Policy <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
+                  <button onClick={() => window.open("/terms", "_blank")} className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Terms of Use <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
+                  <button onClick={() => window.open("/privacy", "_blank")} className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Privacy Policy <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
+                  <button onClick={() => window.open("/help", "_blank")} className={`flex items-center justify-between rounded-xl border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-[12px] ${colors.textPrimary} hover:${colors.bgHover}`}>Help Center <span className={`rounded-full ${colors.bgInput} px-2.5 py-0.5 text-[10px] ${colors.textSecondary}`}>View</span></button>
                 </div>
               </div>
             )}

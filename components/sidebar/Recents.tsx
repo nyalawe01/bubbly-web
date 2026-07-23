@@ -12,11 +12,12 @@ interface RecentsProps {
   onRename: (chatId: string, title: string) => void;
   onDelete: (chatId: string) => void;
   onShare: (chat: any) => void;
+  onExport: (chat: any) => void;
   colors: any;
   theme: string;
 }
 
-export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onDelete, onShare, colors, theme }: RecentsProps) {
+export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onDelete, onShare, onExport, colors, theme }: RecentsProps) {
   const [open, setOpen] = useState(true);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
@@ -105,6 +106,7 @@ export function Recents({ chats, currentChatId, onLoadChat, onPin, onRename, onD
                                 <RowMenu
                                   pinned={!!chat.pinned}
                                   onShare={() => onShare(chat)}
+                                  onExport={() => onExport(chat)}
                                   onTogglePin={() => onPin(chat.id)}
                                   onRename={() => startRename(chat)}
                                   onDelete={() => onDelete(chat.id)}

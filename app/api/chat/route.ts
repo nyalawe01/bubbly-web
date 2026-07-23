@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { CHAT_SYSTEM_PROMPT, diagramAddendum, imageAddendum, webSearchAddendum } from "@/lib/ai/prompts";
+import { CHAT_SYSTEM_PROMPT, diagramAddendum, imageAddendum, webSearchAddendum, tutorAddendum } from "@/lib/ai/prompts";
 import { classifyIntent, type RouteDecision } from "@/lib/ai/router";
 import { embedText, fetchVaultContext, formatVaultContextBlock } from "@/lib/ai/vault";
 import { callModel, chatModelFor } from "@/lib/ai/models";
@@ -10,7 +10,7 @@ import { matchCache, writeCache } from "@/lib/ai/cache";
 
 export async function POST(request: Request) {
   try {
-    const { message, history, modelType, files, generateDiagram, generateImage } = await request.json();
+    const { message, history, modelType, files, generateDiagram, generateImage, mode, incognito } = await request.json();
 
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
@@ -71,7 +71,13 @@ export async function POST(request: Request) {
     // content), no web-search/diagram/image intent, and only the (possibly
     // auto-resolved) "instant" tier. See lib/ai/cache.ts +
     // supabase/migrations/0008_ai_response_cache.sql.
+    // Incognito turns skip the cache both ways: no read (an incognito question
+    // shouldn't surface an answer cached from a non-incognito context) and no
+    // write (keeps incognito content from ever entering the shared cache other
+    // students' similar questions could otherwise hit).
     const cacheEligible =
+      !incognito &&
+      mode !== "tutor" &&
       (!history || history.length === 0) &&
       vaultChunks.length === 0 &&
       !route.needsWebSearch &&
@@ -94,8 +100,11 @@ export async function POST(request: Request) {
       }
     }
 
-    let dynamicSystemInstruction = CHAT_SYSTEM_PROMPT;
-    dynamicSystemInstruction += formatVaultContextBlock(vaultChunks);
+    // Kept separate from CHAT_SYSTEM_PROMPT (not just concatenated into one string)
+    // so the OpenRouter-only tiers below can mark the ~1.8k-token stable prompt as a
+    // cache_control breakpoint while this per-turn part (vault/search/mode context)
+    // stays out of the cached prefix, since it differs on every single call.
+    let systemAddenda = formatVaultContextBlock(vaultChunks);
 
     // Real sources shown to the student at the end of the reply — one entry per
     // distinct Vault file actually retrieved (deduped, same convention as
@@ -124,7 +133,7 @@ export async function POST(request: Request) {
         );
         const searchData = await searchResponse.json();
         if (searchData.results?.length > 0) {
-          dynamicSystemInstruction += webSearchAddendum(searchData.results);
+          systemAddenda += webSearchAddendum(searchData.results);
           webSources = searchData.results.map((r: any) => ({
             type: "web",
             title: r.title,
@@ -141,11 +150,15 @@ export async function POST(request: Request) {
     const combinedSources = [...fileSources, ...webSources];
 
     if (route.needsDiagram) {
-      dynamicSystemInstruction += diagramAddendum();
+      systemAddenda += diagramAddendum();
     }
 
     if (route.needsImage) {
-      dynamicSystemInstruction += imageAddendum();
+      systemAddenda += imageAddendum();
+    }
+
+    if (mode === "tutor") {
+      systemAddenda += tutorAddendum();
     }
 
     // Kick off image generation in parallel with the chat completion below —
@@ -175,7 +188,7 @@ export async function POST(request: Request) {
       : Promise.resolve(null);
 
     if (files && files.length > 0) {
-      dynamicSystemInstruction += `\n\nThe student has attached these files this turn: ${files
+      systemAddenda += `\n\nThe student has attached these files this turn: ${files
         .map((f: any) => f.name)
         .join(', ')}`;
     }
@@ -187,6 +200,28 @@ export async function POST(request: Request) {
       })) || [];
     formattedHistory.push({ role: "user", content: message });
 
+    // Expert/Vision go straight to OpenRouter with no Groq candidate in their
+    // ladder (see lib/ai/models.ts), so it's safe to mark CHAT_SYSTEM_PROMPT as an
+    // explicit cache_control breakpoint for them — OpenRouter/Gemini only caches a
+    // prefix when it's split out like this (confirmed: supports_implicit_caching is
+    // false for every gemini-2.5-flash endpoint OpenRouter reports; caching there
+    // requires this explicit split, not just a long stable string). CHAT_SYSTEM_PROMPT
+    // is ~1.8k tokens, comfortably over Gemini's 1024-token cache minimum. Left as a
+    // single plain string for every other tier (Groq-first) since Groq doesn't
+    // recognize cache_control and DeepSeek's OpenRouter endpoints (StreamLake/
+    // DeepInfra/Novita) don't support caching at all regardless of request shape, so
+    // there's nothing to gain there — only risk — from changing the message shape.
+    const isPureOpenRouterTier = resolvedModelType === "expert" || resolvedModelType === "vision" || resolvedModelType === "gemini";
+    const systemMessage = isPureOpenRouterTier
+      ? {
+          role: "system",
+          content: [
+            { type: "text", text: CHAT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+            ...(systemAddenda ? [{ type: "text", text: systemAddenda }] : []),
+          ],
+        }
+      : { role: "system", content: CHAT_SYSTEM_PROMPT + systemAddenda };
+
     // Pick the chat tier: instant/default -> Groq (fast, falls back to OpenRouter
     // Gemini on a rate limit/deprecation), expert -> DeepSeek, vision -> Gemini
     // Flash. Groq's near-instant first token is what makes this feel like ChatGPT.
@@ -195,7 +230,7 @@ export async function POST(request: Request) {
     // streaming case too, never a mid-stream provider switch.
     const completionStream: any = await callModel(chatModelFor(resolvedModelType), {
       messages: [
-        { role: "system", content: dynamicSystemInstruction },
+        systemMessage as any,
         ...formattedHistory,
       ],
       temperature: 0.5,

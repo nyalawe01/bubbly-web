@@ -29,6 +29,7 @@ import { SourceViewerModal } from "@/components/modals/SourceViewerModal";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { Logo } from "@/components/ui/Logo";
 import { uploadFilesToVault } from "@/lib/api/vaultUpload";
+import { downloadChatMarkdown, downloadBlobResponse } from "@/lib/exportChat";
 import { AssetPage } from "@/components/asset/AssetPage";
 
 // CSS Styles
@@ -119,7 +120,8 @@ export default function Workspace() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [user, setUser] = useState({ name: "Loading...", email: "", avatar_url: "", accessToken: "", id: "" });
+  const [user, setUser] = useState({ name: "Loading...", email: "", avatar_url: "", accessToken: "", id: "", improveModel: false });
+  const [isIncognito, setIsIncognito] = useState(false);
 
   // Chat
   const [messages, setMessages] = useState<any[]>([]);
@@ -312,6 +314,36 @@ export default function Workspace() {
     }
   };
 
+  // Matches mobile's handleDeleteAllChats (SettingsSheet.tsx) — chat_sessions only,
+  // distinct from deleteAllData above (which clears Vault documents/embeddings).
+  const handleDeleteAllChats = async () => {
+    if (!confirm("Delete all your chats? This action is irreversible.")) return;
+    try {
+      const { error } = await supabase.from("chat_sessions").delete().eq("user_id", user.id);
+      if (error) throw error;
+      setSavedChats([]);
+      setMessages([]);
+      setCurrentChatId(null);
+      alert("All chats deleted.");
+    } catch (error: any) {
+      alert("Failed to delete chats: " + error.message);
+    }
+  };
+
+  const exportAccountData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/account/export", {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Export failed");
+      const text = await res.text();
+      downloadBlobResponse(`bubbly-data-export-${user.id}.json`, text);
+    } catch (error: any) {
+      alert("Failed to export data: " + error.message);
+    }
+  };
+
   const updateUserFromSession = (session: any) => {
     if (!session?.user) return;
     const userData = session.user;
@@ -324,13 +356,27 @@ export default function Workspace() {
       const googleIdentity = identities.find((id: any) => id.provider === 'google');
       if (googleIdentity?.identity_data?.avatar_url) avatarUrl = googleIdentity.identity_data.avatar_url;
     }
-    setUser({ 
-      name: displayName, 
-      email: userData.email || "", 
-      avatar_url: avatarUrl || "", 
-      accessToken: session.provider_token || "", 
-      id: userData.id || ""
+    setUser({
+      name: displayName,
+      email: userData.email || "",
+      avatar_url: avatarUrl || "",
+      accessToken: session.provider_token || "",
+      id: userData.id || "",
+      improveModel: !!metadata.improve_model,
     });
+  };
+
+  // "Improve the model for everyone" toggle (Settings > Data) — a training-consent
+  // preference only, stored on user_metadata next to onboarding/profile fields.
+  // No training pipeline exists yet; this just records the user's choice for if/when
+  // one does (see the Privacy Policy's "Improve the model for everyone" section).
+  const setImproveModel = async (value: boolean) => {
+    setUser((u) => ({ ...u, improveModel: value })); // optimistic
+    const { error } = await supabase.auth.updateUser({ data: { improve_model: value } });
+    if (error) {
+      setUser((u) => ({ ...u, improveModel: !value })); // rollback
+      alert("Failed to save preference: " + error.message);
+    }
   };
 
   useEffect(() => {
@@ -520,12 +566,24 @@ export default function Workspace() {
     setCurrentChatId(null);
     setAttachedFiles([]);
     setShowModelPills(true);
+    setIsIncognito(false);
     if (window.innerWidth < 768) setIsMobileMenuOpen(false);
+  };
+
+  // Modeled on ChatGPT's Temporary Chat: a per-conversation mode, entered via its
+  // own explicit action rather than a toggle that could be left on/forgotten.
+  // While active, handleSendMessage never creates/updates a chat_sessions row or
+  // adds the conversation to Recents, and the server (api/chat) skips the
+  // semantic-cache read/write for this turn — see the `incognito` flag below.
+  const startIncognitoChat = () => {
+    startNewChat();
+    setIsIncognito(true);
   };
 
   const loadChat = (item: any) => {
     setActiveView("chat");
     setActiveAssetId(null);
+    setIsIncognito(false);
     const chat = savedChats.find(c => c.id === item.id || c.id === item);
     if (chat) {
       setMessages(chat.history || []);
@@ -569,6 +627,8 @@ export default function Workspace() {
     }
   };
 
+  const exportChat = (chat: any) => downloadChatMarkdown(chat);
+
   const handleModelSelect = (model: "instant" | "expert" | "vision") => {
     setSelectedModel(model);
   };
@@ -597,38 +657,46 @@ export default function Workspace() {
 
     let workingChatId = currentChatId;
     if (!workingChatId) {
-      // Instant fallback title (truncated raw text) so the chat appears in Recents
-      // immediately; replaced moments later by an AI-simplified title (below) —
-      // never blocks sending the message.
-      const fallbackTitle = activeText.length > 40 ? activeText.slice(0, 40) + "…" : activeText;
-      const { data: row } = await supabase
-        .from('chat_sessions')
-        .insert({ user_id: user.id, title: fallbackTitle, history: incomingMessages })
-        .select()
-        .single();
-      // Falls back to a local-only id if the insert fails transiently, so the
-      // turn can still proceed — it just won't persist across reloads this time.
-      workingChatId = row?.id || `chat_${Date.now()}`;
+      workingChatId = `chat_${Date.now()}`;
       setCurrentChatId(workingChatId);
-      const newChat = row ? mapChatRow(row) : { id: workingChatId, title: fallbackTitle, pinned: false, date: new Date().toLocaleDateString(), timestamp: Date.now(), history: incomingMessages };
-      setSavedChats(prev => [newChat, ...prev]);
 
-      if (row) {
-        const titleChatId = workingChatId;
-        fetch("/api/chat/title", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: activeText }),
-        })
-          .then((r) => r.json())
-          .then((d) => {
-            if (!d.title) return;
-            setSavedChats(prev => prev.map(c => (c.id === titleChatId ? { ...c, title: d.title } : c)));
-            supabase.from('chat_sessions').update({ title: d.title }).eq('id', titleChatId).then(() => {}, () => {});
+      // Incognito: never touches chat_sessions and never joins Recents — the
+      // conversation lives only in this component's state for the rest of the
+      // session, matching an actual incognito browser tab.
+      if (!isIncognito) {
+        // Instant fallback title (truncated raw text) so the chat appears in Recents
+        // immediately; replaced moments later by an AI-simplified title (below) —
+        // never blocks sending the message.
+        const fallbackTitle = activeText.length > 40 ? activeText.slice(0, 40) + "…" : activeText;
+        const { data: row } = await supabase
+          .from('chat_sessions')
+          .insert({ user_id: user.id, title: fallbackTitle, history: incomingMessages })
+          .select()
+          .single();
+        // Falls back to a local-only id if the insert fails transiently, so the
+        // turn can still proceed — it just won't persist across reloads this time.
+        workingChatId = row?.id || workingChatId;
+        setCurrentChatId(workingChatId);
+        const newChat = row ? mapChatRow(row) : { id: workingChatId, title: fallbackTitle, pinned: false, date: new Date().toLocaleDateString(), timestamp: Date.now(), history: incomingMessages };
+        setSavedChats(prev => [newChat, ...prev]);
+
+        if (row) {
+          const titleChatId = workingChatId;
+          fetch("/api/chat/title", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: activeText }),
           })
-          .catch(() => {}); // fallback title stands if this fails
+            .then((r) => r.json())
+            .then((d) => {
+              if (!d.title) return;
+              setSavedChats(prev => prev.map(c => (c.id === titleChatId ? { ...c, title: d.title } : c)));
+              supabase.from('chat_sessions').update({ title: d.title }).eq('id', titleChatId).then(() => {}, () => {});
+            })
+            .catch(() => {}); // fallback title stands if this fails
+        }
       }
-    } else {
+    } else if (!isIncognito) {
       setSavedChats(prev => prev.map(c => c.id === workingChatId ? { ...c, history: incomingMessages, timestamp: Date.now() } : c));
       // No Supabase write here — the single write after the AI reply completes
       // (below) covers both this user message and the reply in one round-trip.
@@ -662,6 +730,7 @@ export default function Workspace() {
           files: currentFiles,
           generateImage: wantsImage,
           generateDiagram: needsDiagram,
+          incognito: isIncognito,
           context: { documents: vaultDocuments.map(d => d.name), files: currentFiles.map(f => f.name) }
         }),
       });
@@ -732,11 +801,13 @@ export default function Workspace() {
         setQuestionsModal({ id: aiMessageId, intro: questionsData.intro, questions: questionsData.questions });
       }
 
-      supabase
-        .from('chat_sessions')
-        .update({ history: finalMessages, updated_at: new Date().toISOString() })
-        .eq('id', workingChatId)
-        .then(() => {}, () => {});
+      if (!isIncognito) {
+        supabase
+          .from('chat_sessions')
+          .update({ history: finalMessages, updated_at: new Date().toISOString() })
+          .eq('id', workingChatId)
+          .then(() => {}, () => {});
+      }
     } catch (err: any) {
       setMessages(prev => [...prev.slice(0, -1), { role: "ai", text: `⚠️ API Error: ${err.message}` }]);
     } finally { setIsGenerating(false); }
@@ -1085,12 +1156,14 @@ export default function Workspace() {
   categorizedChats={categorizedChats}
   currentChatId={currentChatId}
   onStartNewChat={startNewChat}
+  onStartIncognitoChat={startIncognitoChat}
   onLoadChat={loadChat}
   onOpenAsset={openAsset}
   onPinChat={toggleChatPin}
   onRenameChat={renameChat}
   onDeleteChat={deleteChat}
   onShareChat={shareChat}
+  onExportChat={exportChat}
   onPinAsset={toggleAssetPin}
   onRenameAsset={renameAsset}
   onDeleteAsset={deleteAsset}
@@ -1136,6 +1209,7 @@ export default function Workspace() {
         {/* Chat View */}
         <ChatView
           messages={messages}
+          isIncognito={isIncognito}
           isGenerating={isGenerating}
           inputText={inputText}
           setInputText={setInputText}
@@ -1193,6 +1267,10 @@ export default function Workspace() {
           initialTab={settingsTab}
           user={user}
           onSignOut={handleSignOut}
+          onDeleteAccount={deleteAccount}
+          onDeleteAllChats={handleDeleteAllChats}
+          onExportData={exportAccountData}
+          onSetImproveModel={setImproveModel}
           colors={colors}
         />
 
