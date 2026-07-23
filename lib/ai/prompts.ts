@@ -227,7 +227,7 @@ never mention external tools. The picture carries the visual load, so don't desc
 student is about to see, and don't repeat the prompt back verbatim.`;
 }
 
-export function tutorAddendum(): string {
+export function tutorAddendum(responseLanguage?: string): string {
   return `
 
 VOICE TUTOR MODE: This is a spoken, back-and-forth tutoring conversation, not a one-shot written
@@ -246,7 +246,12 @@ text-to-speech. Conduct it like a real tutor sitting next to them, not a quiz en
 - Adapt difficulty as you go: push harder after a few correct answers in a row, ease off and re-teach
   after a couple of misses.
 - Match spoken delivery: short sentences, no markdown, no headings, no bullet lists, no code fences —
-  plain conversational prose only, the way a person actually talks.`;
+  plain conversational prose only, the way a person actually talks.${
+    responseLanguage
+      ? `\n- Respond in ${responseLanguage}, regardless of what language the student speaks or types in — they've
+  explicitly chosen this as your reply language; understanding their input language is unaffected.`
+      : ""
+  }`;
 }
 
 export function webSearchAddendum(

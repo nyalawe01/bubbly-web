@@ -10,7 +10,7 @@ import { matchCache, writeCache } from "@/lib/ai/cache";
 
 export async function POST(request: Request) {
   try {
-    const { message, history, modelType, files, generateDiagram, generateImage, mode, incognito } = await request.json();
+    const { message, history, modelType, files, generateDiagram, generateImage, mode, incognito, responseLanguage } = await request.json();
 
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
     }
 
     if (mode === "tutor") {
-      systemAddenda += tutorAddendum();
+      systemAddenda += tutorAddendum(typeof responseLanguage === "string" ? responseLanguage : undefined);
     }
 
     // Kick off image generation in parallel with the chat completion below —

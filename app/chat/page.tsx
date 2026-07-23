@@ -570,14 +570,18 @@ export default function Workspace() {
     if (window.innerWidth < 768) setIsMobileMenuOpen(false);
   };
 
-  // Modeled on ChatGPT's Temporary Chat: a per-conversation mode, entered via its
-  // own explicit action rather than a toggle that could be left on/forgotten.
-  // While active, handleSendMessage never creates/updates a chat_sessions row or
-  // adds the conversation to Recents, and the server (api/chat) skips the
+  // Modeled on ChatGPT's Temporary Chat. Lives as a toggle directly on the
+  // composer (not a separate Sidebar entry point) — flipping it always starts
+  // a genuinely fresh conversation in the new mode, since incognito can only
+  // ever apply from message 1 (there's no way to retroactively make
+  // already-persisted messages incognito, or vice versa). While active,
+  // handleSendMessage never creates/updates a chat_sessions row or adds the
+  // conversation to Recents, and the server (api/chat) skips the
   // semantic-cache read/write for this turn — see the `incognito` flag below.
-  const startIncognitoChat = () => {
+  const toggleIncognito = () => {
+    const next = !isIncognito;
     startNewChat();
-    setIsIncognito(true);
+    setIsIncognito(next);
   };
 
   const loadChat = (item: any) => {
@@ -1156,7 +1160,6 @@ export default function Workspace() {
   categorizedChats={categorizedChats}
   currentChatId={currentChatId}
   onStartNewChat={startNewChat}
-  onStartIncognitoChat={startIncognitoChat}
   onLoadChat={loadChat}
   onOpenAsset={openAsset}
   onPinChat={toggleChatPin}
@@ -1210,6 +1213,7 @@ export default function Workspace() {
         <ChatView
           messages={messages}
           isIncognito={isIncognito}
+          onToggleIncognito={toggleIncognito}
           isGenerating={isGenerating}
           inputText={inputText}
           setInputText={setInputText}

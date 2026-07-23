@@ -20,6 +20,7 @@ const HERO_LOTTIE_SRC = "https://lottie.host/a7719fd3-75b2-40a4-92bf-1393879984f
 interface ChatViewProps {
   messages: any[];
   isIncognito?: boolean;
+  onToggleIncognito?: () => void;
   isGenerating: boolean;
   inputText: string;
   setInputText: (text: string) => void;
@@ -66,6 +67,7 @@ export function ChatView(props: ChatViewProps) {
   const {
     messages,
     isIncognito,
+    onToggleIncognito,
     isGenerating,
     inputText,
     setInputText,
@@ -247,6 +249,8 @@ export function ChatView(props: ChatViewProps) {
           />
         )}
         <ChatInput
+          isIncognito={isIncognito}
+          onToggleIncognito={onToggleIncognito}
           inputText={inputText}
           setInputText={setInputText}
           attachedFiles={attachedFiles}

@@ -71,9 +71,21 @@ async function synthesize(text: string, apiKey: string): Promise<Buffer> {
   throw lastError || new Error("All TTS models failed");
 }
 
+// Gemini's controllable TTS reads style/pace/tone from a natural-language
+// prefix on the SAME text blob — there's no separate "style" API field, so
+// this is baked directly into what gets synthesized (confirmed against
+// Google's documented speech-generation guidance, not assumed). Default is a
+// warm, patient tutor voice; "gentle" softens it further for a low-confidence
+// hedge, so admitting uncertainty doesn't come out sounding as blunt as the
+// rest of the reply.
+const STYLE_PREFIXES: Record<string, string> = {
+  default: "Say in a warm, patient, encouraging tutor's voice, at a relaxed conversational pace: ",
+  gentle: "Say gently and a little more slowly, like softly checking in with someone: ",
+};
+
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json();
+    const { text, style } = await request.json();
     if (!text || !text.trim()) return NextResponse.json({ error: "text is required" }, { status: 400 });
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -83,10 +95,11 @@ export async function POST(request: Request) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const prefix = STYLE_PREFIXES[style as string] || STYLE_PREFIXES.default;
     // Gemini TTS has a practical input ceiling per call — a long tutoring
     // explanation is still just a few sentences, but guard against anything
     // pathological getting sent through.
-    const pcm = await synthesize(text.trim().slice(0, 4000), apiKey);
+    const pcm = await synthesize(prefix + text.trim().slice(0, 4000), apiKey);
     const wav = wrapPcmAsWav(pcm);
 
     return new Response(wav, {

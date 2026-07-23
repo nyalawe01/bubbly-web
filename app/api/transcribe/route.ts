@@ -38,14 +38,40 @@ export async function POST(request: Request) {
     const file = await toFile(Buffer.from(arrayBuffer), `audio.${ext}`);
 
     const groq = getClient("groq");
-    const response = await groq.audio.transcriptions.create({
+    // verbose_json surfaces Whisper's own per-segment avg_logprob/no_speech_prob —
+    // a real confidence proxy from the same call, no extra request, no vendor
+    // change. Callers that only read `text` (dictation) are unaffected; the voice
+    // call's confidence-gating (sessions/[id].tsx) uses the extra fields.
+    const response: any = await groq.audio.transcriptions.create({
       file,
       model: "whisper-large-v3-turbo",
-    });
+      response_format: "verbose_json",
+    } as any);
+
+    const segments: any[] = response.segments || [];
+    // Duration-weighted average — a long confident segment shouldn't be diluted
+    // by a one-word trailing segment the same as it would be with a flat mean.
+    let avgLogprob: number | null = null;
+    let noSpeechProb: number | null = null;
+    if (segments.length) {
+      let totalDuration = 0;
+      let logprobSum = 0;
+      let noSpeechSum = 0;
+      for (const seg of segments) {
+        const duration = Math.max((seg.end ?? 0) - (seg.start ?? 0), 0.01);
+        totalDuration += duration;
+        logprobSum += (seg.avg_logprob ?? -1) * duration;
+        noSpeechSum += (seg.no_speech_prob ?? 0) * duration;
+      }
+      avgLogprob = logprobSum / totalDuration;
+      noSpeechProb = noSpeechSum / totalDuration;
+    }
 
     return NextResponse.json({
       success: true,
       text: response.text || '',
+      avgLogprob,
+      noSpeechProb,
     });
 
   } catch (error: any) {

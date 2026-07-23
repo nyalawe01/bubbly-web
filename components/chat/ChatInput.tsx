@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Plus, Mic, Square, Loader2, X,
-  Zap, Gem, ImageIcon, FileText,
+  Zap, Gem, ImageIcon, FileText, Camera, EyeOff,
   BrainCircuit, Layers, MonitorPlay, GraduationCap,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
@@ -12,6 +12,8 @@ import { FilePreviewModal, type PreviewableFile } from "@/components/ui/FilePrev
 type ModelType = "instant" | "expert" | "vision";
 
 interface ChatInputProps {
+  isIncognito?: boolean;
+  onToggleIncognito?: () => void;
   inputText: string;
   setInputText: (text: string) => void;
   attachedFiles: any[];
@@ -41,6 +43,8 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
+  isIncognito,
+  onToggleIncognito,
   inputText,
   setInputText,
   attachedFiles,
@@ -71,6 +75,7 @@ export function ChatInput({
   const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
   const uploadContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -220,6 +225,10 @@ export function ChatInput({
               {isUploadGridOpen && (
                 <div className={`absolute bottom-full left-0 mb-1.5 w-48 md:w-52 ${colors.bgCard} border ${colors.borderBase} rounded-xl p-1 z-50 shadow-2xl animate-in slide-in-from-bottom-2`}>
                   <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => { onFileUpload(e); setIsUploadGridOpen(false); }} />
+                  {/* capture="environment" opens the phone's camera directly on mobile
+                      browsers; on desktop (no camera concept) it gracefully falls back
+                      to a normal file picker — same onFileUpload handler either way. */}
+                  <input type="file" ref={cameraInputRef} accept="image/*" capture="environment" className="hidden" onChange={(e) => { onFileUpload(e); setIsUploadGridOpen(false); }} />
 
                   <button
                     type="button"
@@ -228,6 +237,15 @@ export function ChatInput({
                   >
                     <FileText size={14} className={colors.textSecondary} />
                     Upload File
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}
+                  >
+                    <Camera size={14} className={colors.textSecondary} />
+                    Take Photo
                   </button>
 
                   <button
@@ -274,6 +292,15 @@ export function ChatInput({
                 </div>
               )}
             </div>
+
+            {onToggleIncognito && (
+              <IconButton
+                icon={EyeOff}
+                label={isIncognito ? "Incognito on — this chat won't be saved" : "Start an incognito chat"}
+                onClick={onToggleIncognito}
+                variant={isIncognito ? "solid" : "ghost"}
+              />
+            )}
 
             <IconButton
               icon={isRecording ? Square : isTranscribing ? Loader2 : Mic}
