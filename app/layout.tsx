@@ -42,8 +42,8 @@ const THEME_INIT_SCRIPT = `
 `;
 
 export const metadata: Metadata = {
-  title: "bubbly - Academic Intelligence Platform",
-  description: "Unified Intelligence Academic Layer - bubbly",
+  title: "Bubbly - Academic Intelligence Platform",
+  description: "Unified Intelligence Academic Layer - Bubbly",
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
@@ -65,6 +65,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={fontVars} suppressHydrationWarning>
       <head>
+        <meta name="google-site-verification" content="YK6Hr3TBqPo3VbkdXhKU-DZqh9qa8S521p_uSRpKI8s" />
         <link rel="icon" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/favicon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -266,7 +266,7 @@ export default function Workspace() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setShowAuthScreen(true); setIsAuthenticated(false);
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   const deleteAccount = async () => {

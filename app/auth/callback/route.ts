@@ -39,6 +39,6 @@ export async function GET(request: Request) {
     console.error("OAuth code exchange failed:", error.message, error);
   }
 
-  // Redirect back to landing on authentication error loops
-  return NextResponse.redirect(`${origin}/?error=Auth_failed`);
+  // Redirect back to the login screen on authentication error loops
+  return NextResponse.redirect(`${origin}/login?error=Auth_failed`);
 }
