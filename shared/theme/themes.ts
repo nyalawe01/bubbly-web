@@ -20,7 +20,7 @@ export const THEMES: Record<ThemeName, Theme> = {
     colors: {
       bg: "#FFFFFF", surface: "#FFFFFF", surface2: "#F4F4F5", border: "#E6E6E6",
       text: "#1A1A1A", text2: "#6B6B6B",
-      accent: "#C15F3C", accent2: "#D99A6C", accentSoft: "#F3E8E2", accentInk: "#FFFFFF",
+      accent: "#005E5D", accent2: "#1F7A79", accentSoft: "#E0F0EF", accentInk: "#FFFFFF",
     },
     typography: { displayFont: "serif", bodyFont: "sans", displayWeight: 500, tracking: "-0.01em" },
     shape: { radius: "16px", radiusSm: "10px" },
@@ -32,7 +32,7 @@ export const THEMES: Record<ThemeName, Theme> = {
     colors: {
       bg: "#2B2B2B", surface: "#333333", surface2: "#3C3C3C", border: "rgba(255,255,255,0.10)",
       text: "#ECECEC", text2: "#9A9A9A",
-      accent: "#D97757", accent2: "#E0A886", accentSoft: "rgba(217,119,87,0.16)", accentInk: "#2B2B2B",
+      accent: "#00807E", accent2: "#1FA39F", accentSoft: "rgba(0,128,126,0.2)", accentInk: "#FFFFFF",
     },
     typography: { displayFont: "serif", bodyFont: "sans", displayWeight: 500, tracking: "-0.01em" },
     shape: { radius: "16px", radiusSm: "10px" },
