@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  
+  --color-brand-black: #08080d;
+  --color-brand-gray-dark: #1e1e24;
+  --color-brand-gray: #4b4b54;
+  --color-brand-gray-light: #d1d1d6;
+  --color-brand-gray-extra-light: #f2f2f7;
+  --color-brand-white: #ffffff;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-brand-white);
+    color: var(--color-brand-black);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-brand-black);
+  }
+}
+
+/* Custom micro-interactions and utilities */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-b: 1px solid rgba(8, 8, 13, 0.08);
+}
+
+.mono-border {
+  border: 1px solid rgba(8, 8, 13, 0.08);
+}
+
+.mono-border-hover:hover {
+  border-color: rgba(8, 8, 13, 0.25);
+}
+
+/* Hide scrollbar for slider container */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation for the chat typing indicator */
+@keyframes blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+.dot-blink {
+  animation: blink 1.4s infinite both;
+}
+
+.dot-blink:nth-child(2) {
+  animation-delay: .2s;
+}
+
+.dot-blink:nth-child(3) {
+  animation-delay: .4s;
+}
+
+/* Fade in animation for chat simulation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
