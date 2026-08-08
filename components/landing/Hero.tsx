@@ -1,101 +1,104 @@
 "use client";
 import DotField from './DotField'
 import { MagneticButton } from './ui/magnetic-button'
-import TextRotate from './fancy/text-rotate'
-import { LayoutGroup } from 'framer-motion'
+import { PlayCircleIcon } from '@heroicons/react/20/solid'
+
+const universities = [
+  'Princeton University',
+  'Stanford University',
+  'MIT',
+  'University of Cambridge',
+  'University of Michigan',
+  'University of Toronto',
+  'Yale University',
+  'National University of Singapore',
+  'University of Maryland',
+  'University of Southern California',
+]
 
 export default function Hero() {
   return (
-    <div id="hero" className="relative bg-white overflow-hidden min-h-[calc(100vh-120px)] flex flex-col justify-center">
-      {/* Interactive Light Theme DotField Background */}
-      <div className="absolute inset-0 z-0 pointer-events-auto opacity-85">
+    <div id="hero" className="relative bg-white overflow-hidden">
+      {/* Subtle interactive DotField background */}
+      <div className="absolute inset-0 z-0 pointer-events-auto opacity-40">
         <DotField
-          dotRadius={1.5}
-          dotSpacing={16}
-          bulgeStrength={67}
-          glowRadius={180}
+          dotRadius={1.2}
+          dotSpacing={18}
+          bulgeStrength={55}
+          glowRadius={160}
           sparkle={false}
           waveAmplitude={0}
-          gradientFrom="rgba(79, 70, 229, 0.3)"
-          gradientTo="rgba(147, 51, 234, 0.2)"
-          glowColor="rgba(99, 102, 241, 0.15)"
+          gradientFrom="rgba(79, 70, 229, 0.2)"
+          gradientTo="rgba(147, 51, 234, 0.12)"
+          glowColor="rgba(99, 102, 241, 0.1)"
         />
       </div>
 
-      <div className="relative isolate z-10 px-6 py-12 sm:py-16 lg:py-20 pointer-events-none my-auto">
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
-        >
-          <div
-            style={{
-              clipPath:
-                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-            }}
-            className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-30 bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-25 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
-          />
-        </div>
+      <div className="relative isolate z-10 mx-auto max-w-7xl px-6 pt-16 pb-16 sm:pt-24 sm:pb-20 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-x-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-semibold text-indigo-700">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden="true">
+              <path
+                fillRule="evenodd"
+                d="M10 1c.3 0 .57.17.7.44l1.34 2.7 2.98.43c.33.05.6.29.68.61s-.06.68-.3.87l-2.16 2.1.51 2.97a.75.75 0 0 1-1.09.79L10 10.7l-2.66 1.4a.75.75 0 0 1-1.09-.79l.51-2.96L4.6 6.24a.75.75 0 0 1 .38-1.28l2.98-.43 1.34-2.7A.75.75 0 0 1 10 1Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            The #1 AI Study Tool for Modern Students
+          </div>
 
-        <div className="mx-auto max-w-4xl text-center">
-          <div>
-            <LayoutGroup>
-              <h1 className="text-4xl font-bold tracking-tight text-balance text-gray-900 sm:text-6xl lg:text-7xl leading-tight">
-                The AI{' '}
-                <TextRotate
-                  texts={['Extension', 'Mobile App', 'Web App']}
-                  mainClassName="text-white px-3 sm:px-4 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 overflow-hidden justify-center rounded-xl inline-flex shadow-lg"
-                  staggerFrom="last"
-                  initial={{ y: '100%', opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: '-120%', opacity: 0 }}
-                  staggerDuration={0.025}
-                  splitLevelClassName="overflow-hidden py-0.5"
-                  transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-                  rotationInterval={2500}
-                />{' '}
-                Built for the Modern Student.
-              </h1>
-            </LayoutGroup>
+          {/* Headline */}
+          <h1 className="mt-6 text-4xl font-bold tracking-tight text-balance text-gray-900 sm:text-6xl lg:text-[4.25rem] lg:leading-[1.05]">
+            Study Smarter with AI.{' '}
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Remember More. Stress Less.
+            </span>
+          </h1>
 
-            <p className="mt-6 text-base font-medium text-pretty text-gray-600 sm:text-lg lg:text-xl leading-relaxed max-w-3xl mx-auto">
-              Chat with an AI tutor that generates quizzes, flashcards, slides, and exams from your own notes —
-              or talk it through out loud with the voice-to-voice study mode. Bubbly keeps your research organized
-              in one Vault and works the same way across web, mobile, and your browser.
-            </p>
+          {/* Subheading */}
+          <p className="mt-6 text-lg font-medium text-pretty text-gray-600 sm:text-xl leading-relaxed max-w-2xl mx-auto">
+            Turn lectures, notes, and any material into a complete, science-backed AI study
+            system — so you understand more, remember longer, and stress less.
+          </p>
 
-            <div className="mt-8 flex items-center justify-center gap-x-5 pointer-events-auto">
-              {/* Primary Solid Button (No magnetic effect for borderless) */}
+          {/* CTAs */}
+          <div className="mt-9 flex items-center justify-center gap-x-4 pointer-events-auto">
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-md hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
+            >
+              Start My Free Study Session
+            </a>
+            <MagneticButton strength={0.6} maxDistance={80}>
               <a
-                href="/login"
-                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 text-base font-semibold text-white shadow-md hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
+                href="#how-it-works"
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white/80 px-5 py-3.5 text-base font-semibold text-gray-800 hover:border-indigo-600 hover:text-indigo-600 transition-colors"
               >
-                Claim Your Free Workspace
+                <PlayCircleIcon className="size-5 mr-2 text-indigo-600" aria-hidden="true" />
+                Watch How It Works
               </a>
-
-              {/* Secondary Bordered Button (Uses MagneticButton for bordered buttons) */}
-              <MagneticButton strength={0.6} maxDistance={80}>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white/80 px-4 py-3 text-base font-semibold text-gray-800 hover:border-indigo-600 hover:text-indigo-600 transition-colors"
-                >
-                  See how it works <span aria-hidden="true" className="ml-1.5">→</span>
-                </a>
-              </MagneticButton>
-            </div>
+            </MagneticButton>
           </div>
         </div>
 
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
-        >
-          <div
-            style={{
-              clipPath:
-                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-            }}
-            className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-25 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
-          />
+        {/* Trusted-by strip */}
+        <div className="mt-20 sm:mt-24">
+          <p className="text-center text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Trusted by students at top universities
+          </p>
+          <div className="relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
+            <div className="marquee-track flex w-max items-center gap-x-12 pr-12">
+              {[...universities, ...universities].map((name, i) => (
+                <span
+                  key={`${name}-${i}`}
+                  className="whitespace-nowrap text-lg font-semibold text-gray-400"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

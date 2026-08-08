@@ -1,23 +1,33 @@
 "use client";
-import { MagneticButton } from './ui/magnetic-button'
+import { useState } from 'react'
 
 const logoImg = '/landing/logo.png'
 
 const navigation = {
-  solutions: [
+  product: [
+    { name: 'AI Notes', href: '#features' },
+    { name: 'AI Summary', href: '#features' },
+    { name: 'AI Flashcards', href: '#features' },
+    { name: 'AI Quizzes', href: '#features' },
+    { name: 'AI Tutor', href: '#features' },
+  ],
+solutions: [
     { name: 'Web Command Center', href: '#platforms' },
-    { name: 'Mobile Companion', href: '#platforms' },
-    { name: 'Browser Extension', href: '#platforms' },
-    { name: 'Quiz & Flashcard Generation', href: '#features' },
-    { name: 'Voice-to-Voice Tutor', href: '#features' },
+    { name: 'Study Vault', href: '#platforms' },
+    { name: 'Voice-to-Voice Tutor', href: '#platforms' },
+    { name: '30+ Languages & RTL', href: '#platforms' },
+    { name: 'Theming & Modes', href: '#platforms' },
   ],
   support: [
     { name: 'Help Center', href: '/help' },
-  ],
-  company: [
-    { name: 'About', href: '#about' },
+    { name: 'FAQ', href: '#faq' },
     { name: 'Privacy Policy', href: '/privacy' },
     { name: 'Terms of Service', href: '/terms' },
+  ],
+  company: [
+    { name: 'About', href: '#compare' },
+    { name: 'Contact Us', href: '/help' },
+    { name: 'Status', href: '/help' },
   ],
   social: [
     {
@@ -55,6 +65,8 @@ const navigation = {
 }
 
 export default function Footer() {
+  const [email, setEmail] = useState('')
+
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith('#')) {
       e.preventDefault()
@@ -68,7 +80,45 @@ export default function Footer() {
 
   return (
     <footer className="bg-gray-950 text-gray-300 border-t border-gray-800/80">
-      <div className="mx-auto max-w-7xl px-6 pt-16 pb-12 lg:px-8 lg:pt-20">
+      {/* Newsletter */}
+      <div className="mx-auto max-w-7xl px-6 pt-16 lg:px-8">
+        <div className="flex flex-col items-start justify-between gap-6 border-b border-gray-800/80 pb-12 md:flex-row md:items-center">
+          <div className="max-w-md">
+            <h3 className="text-xl font-bold text-white">Get study tips, straight to your inbox</h3>
+            <p className="mt-2 text-sm text-gray-400">
+              A short note on studying smarter and new features, a few times a month.
+            </p>
+          </div>
+          <form
+            className="flex w-full max-w-md gap-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (email) window.location.href = '/login'
+            }}
+          >
+            <label htmlFor="newsletter-email" className="sr-only">
+              Email address
+            </label>
+            <input
+              id="newsletter-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@university.edu"
+              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="flex-none rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+            >
+              Subscribe
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-6 pt-12 pb-12 lg:px-8 lg:pt-16">
         <div className="xl:grid xl:grid-cols-3 xl:gap-8">
           {/* Brand Column */}
           <div className="space-y-8">
@@ -77,8 +127,8 @@ export default function Footer() {
               <span className="text-2xl font-bold text-white tracking-tight">Bubbly</span>
             </a>
             <p className="text-sm text-gray-400 leading-relaxed max-w-md">
-              The AI Workspace Built for the Modern Student. Chat, generate study material, and keep your
-              research organized — unified across web, mobile, and your browser.
+              The AI study tool for faster, more effective learning. Turn any material into
+              notes, flashcards, quizzes, and a 24/7 AI tutor — all in your browser.
             </p>
 
             {/* Social Links */}
@@ -98,55 +148,63 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Navigation Links Columns */}
-          <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
-            <div className="md:grid md:grid-cols-2 md:gap-8">
-              <div>
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Solutions</h3>
-                <ul role="list" className="mt-6 space-y-3.5">
-                  {navigation.solutions.map((item) => (
-                    <li key={item.name}>
-                      <a
-                        href={item.href}
-                        onClick={(e) => scrollToSection(e, item.href)}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
-                      >
-                        {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-10 md:mt-0">
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Support</h3>
-                <ul role="list" className="mt-6 space-y-3.5">
-                  {navigation.support.map((item) => (
-                    <li key={item.name}>
-                      <a href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors">
-                        {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          {/* Navigation Columns */}
+          <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0 md:grid-cols-4">
+            <div>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Product</h3>
+              <ul role="list" className="mt-6 space-y-3.5">
+                {navigation.product.map((item) => (
+                  <li key={item.name}>
+                    <a
+                      href={item.href}
+                      onClick={(e) => scrollToSection(e, item.href)}
+                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="md:grid md:grid-cols-1 md:gap-8">
-              <div>
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Company</h3>
-                <ul role="list" className="mt-6 space-y-3.5">
-                  {navigation.company.map((item) => (
-                    <li key={item.name}>
-                      <a
-                        href={item.href}
-                        onClick={(e) => scrollToSection(e, item.href)}
-                        className="inline-flex items-center gap-x-2 text-sm text-gray-400 hover:text-white transition-colors"
-                      >
-                        <span>{item.name}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Solutions</h3>
+              <ul role="list" className="mt-6 space-y-3.5">
+                {navigation.solutions.map((item) => (
+                  <li key={item.name}>
+                    <a
+                      href={item.href}
+                      onClick={(e) => scrollToSection(e, item.href)}
+                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Support</h3>
+              <ul role="list" className="mt-6 space-y-3.5">
+                {navigation.support.map((item) => (
+                  <li key={item.name}>
+                    <a href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors">
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Company</h3>
+              <ul role="list" className="mt-6 space-y-3.5">
+                {navigation.company.map((item) => (
+                  <li key={item.name}>
+                    <a href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors">
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>

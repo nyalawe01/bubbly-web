@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="2. Data we collect">
         <ul className="list-disc space-y-1.5 pl-5">
-          <li><strong>Account data:</strong> your email and password (if you sign up that way), or your name/email/profile picture from Google if you sign in with Google.</li>
+          <li><strong>Account data:</strong> your email and password.</li>
           <li><strong>Content you create:</strong> chat messages and conversation history, documents and files you upload to your Vault, and anything you generate — quizzes, flashcards, slides, summaries, practice exams, diagrams, and images.</li>
           <li><strong>Usage preferences:</strong> theme, language, and interface settings you choose in Settings.</li>
         </ul>

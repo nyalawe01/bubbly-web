@@ -38,7 +38,7 @@ export default function TermsPage() {
 
       <LegalSection title="3. Accounts and eligibility">
         <p>
-          You need an account to use bubbly, created with an email/password or Google sign-in. You're
+          You need an account to use bubbly, created with an email and password. You're
           responsible for keeping your login credentials secure and for anything that happens under
           your account. bubbly's onboarding includes an age confirmation step; if you're old enough to
           need parental or guardian permission to use an online service in your country, please get it

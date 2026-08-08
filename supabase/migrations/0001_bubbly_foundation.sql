@@ -3,6 +3,52 @@
 -- per-generator history tables (mirroring the existing quiz_history shape), and
 -- cross-device theme/preference sync. Run this against the Supabase project via the
 -- SQL editor or `supabase db push` once the CLI is linked.
+--
+-- NOTE: this migration also BASELINES the tables that predate this migration set
+-- (vault_documents, vault_embeddings, quiz_history) so a fresh `supabase db reset`
+-- or a brand-new project can provision end-to-end. Later migrations (0002, 0013)
+-- patch these tables, so without them a fresh database fails at 0002. On the
+-- existing remote database these `create table if not exists` statements are no-ops.
+-- All statements are idempotent and safe to re-run.
+
+-- Required for the vault's vector(768) embeddings. Present on hosted Supabase by
+-- default, but a fresh local dev database needs it created explicitly.
+create extension if not exists vector;
+
+-- ============================================================
+-- VAULT (baselined here — created originally before this migration set)
+-- ============================================================
+create table if not exists vault_documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  file_name text,
+  file_type text,
+  file_size text,
+  file_content text,
+  ai_summary text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists vault_embeddings (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid references vault_documents(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  content text,
+  embedding vector(768),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists quiz_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  title text,
+  questions jsonb,
+  question_count int,
+  difficulty text,
+  topic text,
+  sources text[],
+  created_at timestamptz not null default now()
+);
 
 -- ============================================================
 -- STUDY SESSIONS

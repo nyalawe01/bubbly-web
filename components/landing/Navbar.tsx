@@ -1,37 +1,14 @@
 "use client";
-import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { ChevronDownIcon, ComputerDesktopIcon, DevicePhoneMobileIcon, GlobeAltIcon } from '@heroicons/react/20/solid'
 import StaggeredMenu from './StaggeredMenu'
 import { MagneticButton } from './ui/magnetic-button'
 
 const logoImg = '/landing/logo.png'
 
-const productDropdownItems = [
-  {
-    name: 'Web Command Center',
-    description: 'Your disciplined academic dashboard',
-    href: '#platforms',
-    icon: ComputerDesktopIcon,
-  },
-  {
-    name: 'Mobile Companion',
-    description: 'Capture and share, online or off',
-    href: '#platforms',
-    icon: DevicePhoneMobileIcon,
-  },
-  {
-    name: 'Browser Extension',
-    description: 'Assistance inside every tab',
-    href: '#platforms',
-    icon: GlobeAltIcon,
-  },
-]
-
 const mainNavLinks = [
   { name: 'Features', href: '#features' },
+  { name: 'Solutions', href: '#solutions' },
   { name: 'How It Works', href: '#how-it-works' },
-  { name: 'Platforms', href: '#platforms' },
-  { name: 'About', href: '#about' },
+  { name: 'FAQ', href: '#faq' },
 ]
 
 export default function Navbar() {
@@ -69,14 +46,13 @@ export default function Navbar() {
           <StaggeredMenu
             position="right"
             items={[
-              { label: 'Product', ariaLabel: 'Product', link: '#platforms' },
               ...mainNavLinks.map((item) => ({
                 label: item.name,
                 ariaLabel: item.name,
                 link: item.href,
               })),
-              { label: 'Log In', ariaLabel: 'Log In', link: '/login' },
-              { label: 'Sign Up Free', ariaLabel: 'Sign Up Free', link: '/login' },
+              { label: 'Sign In', ariaLabel: 'Sign In', link: '/login' },
+              { label: 'Try for Free', ariaLabel: 'Try for Free', link: '/login' },
             ]}
             displaySocials={false}
             displayItemNumbering={true}
@@ -91,42 +67,6 @@ export default function Navbar() {
 
         {/* Desktop Links */}
         <div className="hidden lg:flex lg:items-center lg:gap-x-8">
-          {/* Product Dropdown Menu */}
-          <Menu as="div" className="relative inline-block text-left">
-            <MenuButton className="inline-flex items-center gap-x-1 text-sm/6 font-semibold text-gray-800 hover:text-indigo-600 transition-colors focus:outline-none cursor-pointer py-1">
-              Product
-              <ChevronDownIcon className="size-4 text-gray-500" aria-hidden="true" />
-            </MenuButton>
-
-            <MenuItems
-              transition
-              className="absolute left-0 z-50 mt-2 w-80 origin-top-left rounded-2xl bg-white p-2 text-sm/6 shadow-xl ring-1 ring-gray-900/10 transition duration-150 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
-            >
-              <div className="p-1">
-                {productDropdownItems.map((item) => (
-                  <MenuItem key={item.name}>
-                    <a
-                      href={item.href}
-                      onClick={(e) => scrollToSection(e, item.href)}
-                      className="group flex items-start gap-x-3.5 rounded-xl p-3 hover:bg-indigo-50/70 transition-colors"
-                    >
-                      <div className="flex size-9 flex-none items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors mt-0.5">
-                        <item.icon className="size-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-gray-500 leading-snug">{item.description}</p>
-                      </div>
-                    </a>
-                  </MenuItem>
-                ))}
-              </div>
-            </MenuItems>
-          </Menu>
-
-          {/* Main Links */}
           {mainNavLinks.map((item) => (
             <a
               key={item.name}
@@ -139,22 +79,21 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Desktop Top Right: Log in & Bordered Sign Up Free */}
+        {/* Desktop Top Right: Sign in & Try for Free */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
           <a
             href="/login"
             className="text-sm/6 font-semibold text-gray-800 hover:text-indigo-600 transition-colors px-3 py-2"
           >
-            Log in
+            Sign in
           </a>
 
-          {/* Bordered Button uses MagneticButton */}
           <MagneticButton strength={0.6} maxDistance={80}>
             <a
               href="/login"
-              className="inline-flex items-center justify-center rounded-lg border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
+              className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
             >
-              Sign up free
+              Try for Free
             </a>
           </MagneticButton>
         </div>

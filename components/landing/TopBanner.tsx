@@ -35,17 +35,17 @@ export default function TopBanner() {
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="text-sm/6 text-gray-100">
-          <strong className="font-semibold">Welcome to Bubbly!</strong>
+          <strong className="font-semibold">New:</strong>
           <svg viewBox="0 0 2 2" aria-hidden="true" className="mx-2 inline size-0.5 fill-current">
             <circle r={1} cx={1} cy={1} />
           </svg>
-          Discover the ultimate AI workspace designed for modern students.
+          The AI study playground is live in the browser — your tutor, Vault, and generators, free to start.
         </p>
         <a
           href="/login"
           className="flex-none rounded-full bg-white/10 px-3.5 py-1 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-white/20 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          Sign up <span aria-hidden="true">&rarr;</span>
+          Try for free <span aria-hidden="true">&rarr;</span>
         </a>
       </div>
       <div className="flex flex-1 justify-end">

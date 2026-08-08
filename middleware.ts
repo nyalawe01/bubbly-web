@@ -42,7 +42,9 @@ export const config = {
   matcher: [
     // Run on everything except static assets and image optimization files —
     // must include API routes, since that's exactly where the stale-cookie
-    // failures were happening.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4)$).*)",
+    // failures were happening. Static assets (.css/.js/.woff2/.ico/.pdf) skip
+    // the getUser() refresh: they can't hold an auth session worth refreshing,
+    // and excluding them keeps cold static loads from paying a JWT decode.
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:css|js|woff2|ico|pdf|svg|png|jpg|jpeg|gif|webp|mp4)$).*)",
   ],
 };

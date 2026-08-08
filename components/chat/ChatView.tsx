@@ -36,7 +36,6 @@ interface ChatViewProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onGoogleDriveClick?: () => void;
   onFileClick: (file: any) => void;
   onEditMessage: (index: number, newText: string) => void;
   onRegenerate: () => void;
@@ -56,9 +55,9 @@ interface ChatViewProps {
   colors: any;
   logoSrc: string;
   theme: string;
-  chatBottomRef: React.RefObject<HTMLDivElement>;
-  inputRef: React.RefObject<HTMLInputElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  chatBottomRef: React.RefObject<HTMLDivElement | null>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 const ACTION_KEYS = ["quiz", "flashcards", "slides", "summary", "exam"] as const;
@@ -83,7 +82,6 @@ export function ChatView(props: ChatViewProps) {
     onStartRecording,
     onStopRecording,
     onFileUpload,
-    onGoogleDriveClick,
     onFileClick,
     onEditMessage,
     onRegenerate,
@@ -266,7 +264,6 @@ export function ChatView(props: ChatViewProps) {
           onStartRecording={onStartRecording}
           onStopRecording={onStopRecording}
           onFileUpload={onFileUpload}
-          onGoogleDriveClick={onGoogleDriveClick}
           onFileClick={onFileClick}
           onOpenQuiz={onOpenQuiz}
           onOpenFlashcards={onOpenFlashcards}

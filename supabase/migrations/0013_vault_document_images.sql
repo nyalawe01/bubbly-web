@@ -10,6 +10,17 @@
 -- Mirrors 0003_generated_images_storage.sql's storage-bucket-policy pattern
 -- (new bucket "vault-diagrams", path scoped to `${user.id}/...`) and the
 -- owner-only RLS pattern used throughout (see 0002_vault_security.sql).
+--
+-- PRODUCT-SECURITY DECISION (documented, not changed here): this bucket is
+-- public-read even though the images are extracted from users' PRIVATE uploaded
+-- documents, because the quiz generator hands the raw image URLs to the LLM and
+-- bakes them into quiz JSON that the UI loads directly. Moving to private +
+-- signed URLs is a refactor across app/api/quiz, app/api/notebook/generate and
+-- the quiz renderers, so the risk was accepted for now. Mitigations: paths are
+-- scoped to `${user.id}/...` (unguessable UUID prefix), and the public flag only
+-- means "fetchable without auth" — it is NOT read for arbitrary storage.objects
+-- rows (those stay owner-scoped). Revisit signed URLs if any diagram is ever
+-- classified sensitive.
 
 create table if not exists vault_document_images (
   id uuid primary key default gen_random_uuid(),

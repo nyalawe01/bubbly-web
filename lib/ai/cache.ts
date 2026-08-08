@@ -46,10 +46,12 @@ export async function matchCache(
 
     const row = data[0];
     // Fire-and-forget hit-count bump — never let this block or fail the response.
+    // Uses the bump_response_cache_hit RPC (see 0015_response_cache_hardening.sql)
+    // rather than a direct UPDATE: the shared cache's UPDATE policy is now owner-only
+    // (to stop cross-user payload tampering), and this SECURITY DEFINER function lets
+    // any authenticated user increment the counters without touching the payload.
     supabase
-      .from("ai_response_cache")
-      .update({ hit_count: (row.hit_count ?? 0) + 1, last_hit_at: new Date().toISOString() })
-      .eq("id", row.id)
+      .rpc("bump_response_cache_hit", { p_row_id: row.id })
       .then(() => {}, () => {});
 
     return { hit: true, payload: row.payload };

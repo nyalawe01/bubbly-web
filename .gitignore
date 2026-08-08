@@ -17,6 +17,13 @@
 /.next/
 /out/
 
+# stale full copy of /public (committed accidentally — should never be built here)
+/dist/
+
+# supabase cli local state (project-ref, pooler hostname, version pins — regenerated)
+/supabase/.temp/
+/supabase/.branches/
+
 # production
 /build
 

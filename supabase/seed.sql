@@ -1,0 +1,9 @@
+-- seed.sql
+--
+-- Intentionally empty: there is no demo/seed data for this project. Every table
+-- is user-scoped (owned by auth.users rows created through the app), so seeding
+-- users or content here would only pollute a fresh local database.
+--
+-- This file exists so supabase/config.toml's `[db.seed]` block
+-- (sql_paths = ["./seed.sql"]) resolves instead of failing `supabase db reset`.
+-- Add real seeds here if the project ever needs reference/demo data.

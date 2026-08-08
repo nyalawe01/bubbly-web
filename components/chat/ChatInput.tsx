@@ -29,7 +29,6 @@ interface ChatInputProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onGoogleDriveClick?: () => void;
   onFileClick: (file: any) => void;
   onOpenQuiz?: () => void;
   onOpenFlashcards?: () => void;
@@ -38,8 +37,8 @@ interface ChatInputProps {
   onOpenExam?: () => void;
   colors: any;
   theme: string;
-  inputRef: React.RefObject<HTMLInputElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export function ChatInput({
@@ -60,7 +59,6 @@ export function ChatInput({
   onStartRecording,
   onStopRecording,
   onFileUpload,
-  onGoogleDriveClick,
   onOpenQuiz,
   onOpenFlashcards,
   onOpenSlides,
@@ -246,17 +244,6 @@ export function ChatInput({
                   >
                     <Camera size={14} className={colors.textSecondary} />
                     Take Photo
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setIsUploadGridOpen(false); onGoogleDriveClick?.(); }}
-                    className={`icon-motion w-full flex items-center gap-2 p-2 ${colors.bgHover} rounded-lg text-[11px] md:text-xs font-medium transition-colors`}
-                  >
-                    <svg viewBox="0 0 24 24" width="14" height="14" className={colors.textSecondary} fill="currentColor">
-                       <path d="M12 2.5l-8.5 15h17L12 2.5zm-5.5 14L12 5.5l5.5 11h-11z" />
-                    </svg>
-                    Google Drive
                   </button>
 
                   {(onOpenQuiz || onOpenFlashcards || onOpenSlides || onOpenSummary || onOpenExam) && (
