@@ -18,7 +18,7 @@ import Footer from "@/components/landing/Footer";
 export const metadata: Metadata = {
   title: "Bubbly | The #1 AI Study Tool for Modern Students",
   description:
-    "Turn lectures and any material into a complete, science-backed AI study system — AI notes, summaries, flashcards, quizzes, and a 24/7 AI tutor grounded in your own notes. Free to start, right in your browser.",
+    "Turn lectures and any material into a complete, science-backed AI study system — AI notes, summaries, flashcards, quizzes, and a 24/7 AI tutor grounded in your own notes. Free to start, on web, mobile, and your browser.",
 };
 
 export default function LandingPage() {

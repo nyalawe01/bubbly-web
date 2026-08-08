@@ -16,7 +16,7 @@ const faqs = [
   {
     question: 'How does Bubbly work?',
     answer:
-      'Create a study session, upload or record your material, and Bubbly instantly processes it into organized study tools: AI notes, summaries, flashcards, quizzes, and an AI tutor you can chat with any time. You can even talk through it out loud.',
+      'Create a study session, upload or record your material, and Bubbly instantly processes it into organized study tools: AI notes, summaries, flashcards, quizzes, and an AI tutor you can chat with any time. On mobile you can even talk through it out loud.',
   },
   {
     question: 'What types of files are accepted?',

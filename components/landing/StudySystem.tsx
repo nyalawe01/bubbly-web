@@ -41,7 +41,7 @@ const features = [
     name: 'AI Tutor',
     tagline: 'Ask questions. Get clarity 24/7',
     description:
-      'Chat with the AI Tutor — grounded in your own notes — to explain concepts and clear confusion, any time. Talk it through out loud if you prefer.',
+      'Chat with the AI Tutor — grounded in your own notes — to explain concepts and clear confusion, any time. On mobile, talk it through out loud.',
   },
   {
     icon: AcademicCapIcon,

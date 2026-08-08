@@ -36,6 +36,7 @@ interface ChatViewProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onGoogleDriveClick?: () => void;
   onFileClick: (file: any) => void;
   onEditMessage: (index: number, newText: string) => void;
   onRegenerate: () => void;
@@ -82,6 +83,7 @@ export function ChatView(props: ChatViewProps) {
     onStartRecording,
     onStopRecording,
     onFileUpload,
+    onGoogleDriveClick,
     onFileClick,
     onEditMessage,
     onRegenerate,
@@ -264,6 +266,7 @@ export function ChatView(props: ChatViewProps) {
           onStartRecording={onStartRecording}
           onStopRecording={onStopRecording}
           onFileUpload={onFileUpload}
+          onGoogleDriveClick={onGoogleDriveClick}
           onFileClick={onFileClick}
           onOpenQuiz={onOpenQuiz}
           onOpenFlashcards={onOpenFlashcards}

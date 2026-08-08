@@ -13,10 +13,10 @@ const navigation = {
   ],
 solutions: [
     { name: 'Web Command Center', href: '#platforms' },
+    { name: 'Mobile Companion', href: '#platforms' },
+    { name: 'Browser Extension', href: '#platforms' },
     { name: 'Study Vault', href: '#platforms' },
     { name: 'Voice-to-Voice Tutor', href: '#platforms' },
-    { name: '30+ Languages & RTL', href: '#platforms' },
-    { name: 'Theming & Modes', href: '#platforms' },
   ],
   support: [
     { name: 'Help Center', href: '/help' },
@@ -128,7 +128,7 @@ export default function Footer() {
             </a>
             <p className="text-sm text-gray-400 leading-relaxed max-w-md">
               The AI study tool for faster, more effective learning. Turn any material into
-              notes, flashcards, quizzes, and a 24/7 AI tutor — all in your browser.
+              notes, flashcards, quizzes, and a 24/7 AI tutor — on web, mobile, and your browser.
             </p>
 
             {/* Social Links */}

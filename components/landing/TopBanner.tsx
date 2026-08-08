@@ -39,7 +39,7 @@ export default function TopBanner() {
           <svg viewBox="0 0 2 2" aria-hidden="true" className="mx-2 inline size-0.5 fill-current">
             <circle r={1} cx={1} cy={1} />
           </svg>
-          The AI study playground is live in the browser — your tutor, Vault, and generators, free to start.
+          The Bubbly browser extension now works on any site — your AI tutor in every tab.
         </p>
         <a
           href="/login"

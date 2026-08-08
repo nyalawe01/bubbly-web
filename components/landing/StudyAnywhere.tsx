@@ -1,28 +1,36 @@
 import {
   ComputerDesktopIcon,
-  CloudIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentTextIcon,
+  DevicePhoneMobileIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline'
 
-const highlights = [
+const platforms = [
   {
-    icon: ChatBubbleLeftRightIcon,
-    title: '24/7 AI Tutor',
+    icon: ComputerDesktopIcon,
+    name: 'Web Command Center',
     description:
-      'Chat with your tutor — grounded in your own notes — to explain concepts and clear confusion any time.',
+      'Your full dashboard for document creation and AI assistance — chat with your tutor, generate study material, and keep everything in one Vault.',
+    cta: 'Open the Web App',
+    href: '/login',
+    status: 'Available now',
   },
   {
-    icon: DocumentTextIcon,
-    title: 'Study Tools in One Place',
+    icon: DevicePhoneMobileIcon,
+    name: 'Mobile Companion',
     description:
-      'Notes, summaries, flashcards, quizzes, slides, and practice exams generated from your uploads, all in one Vault.',
+      'On-the-go document capture and sharing, plus a voice-to-voice tutor mode for when you\'d rather talk it through than type.',
+    cta: 'Coming to the App Store',
+    href: '/login',
+    status: 'Coming soon',
   },
   {
-    icon: CloudIcon,
-    title: 'Your Vault, Secured',
+    icon: GlobeAltIcon,
+    name: 'Browser Extension',
     description:
-      'Every document and chat stays private to you, protected on our server, on all your devices.',
+      'Real-time research aid right in your browser tab — summarize what you\'re reading and ask follow-up questions without losing your place.',
+    cta: 'Coming to the Chrome Store',
+    href: '/login',
+    status: 'Coming soon',
   },
 ]
 
@@ -31,41 +39,45 @@ export default function StudyAnywhere() {
     <section id="platforms" className="bg-gray-50 py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold text-emerald-600 uppercase tracking-wider">
-            The Web App
-          </p>
           <h2 className="text-3xl font-bold tracking-tight text-balance text-gray-900 sm:text-4xl lg:text-5xl">
-            Your AI study studio, right in the browser.
+            Study anywhere with Bubbly.
           </h2>
           <p className="mt-4 text-lg text-pretty text-gray-600">
-            The full Bubbly experience lives on the web — free to start, no downloads. Sign in from
-            any device and pick up right where you left off.
+            Your workspace, everywhere you are — the same chat, Vault, and generators on web,
+            mobile, and in your browser.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {highlights.map((item) => (
+        <div className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
+          {platforms.map((platform) => (
             <div
-              key={item.title}
+              key={platform.name}
               className="flex flex-col rounded-2xl border border-gray-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
             >
-              <div className="flex size-12 items-center justify-center rounded-xl bg-indigo-600 text-white">
-                <item.icon className="size-6" aria-hidden="true" />
+              <div className="flex items-center justify-between">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                  <platform.icon className="size-6" aria-hidden="true" />
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    platform.status === 'Available now'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {platform.status}
+                </span>
               </div>
-              <h3 className="mt-5 text-lg font-bold text-gray-900">{item.title}</h3>
-              <p className="mt-2 flex-1 text-sm/6 text-gray-600">{item.description}</p>
+              <h3 className="mt-5 text-lg font-bold text-gray-900">{platform.name}</h3>
+              <p className="mt-2 flex-1 text-sm/6 text-gray-600">{platform.description}</p>
+              <a
+                href={platform.href}
+                className="mt-6 inline-flex items-center justify-center rounded-lg border border-indigo-600 px-4 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-600 hover:text-white"
+              >
+                {platform.cta}
+              </a>
             </div>
           ))}
-        </div>
-
-        <div className="mt-10 text-center">
-          <a
-            href="/login"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-md hover:bg-indigo-500 transition-colors"
-          >
-            <ComputerDesktopIcon className="size-5" aria-hidden="true" />
-            Open the Web App
-          </a>
         </div>
       </div>
     </section>

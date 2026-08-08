@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Mail, Lock, User, Globe, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { createClient } from "@/app/utils/supabase";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { Reveal } from "@/components/ui/motion";
@@ -13,9 +13,30 @@ export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // Ask for Google Drive access as part of sign-up/sign-in, so the consent
+        // screen includes Drive up front. access_type=offline + prompt=consent so a
+        // refresh token is issued and the Drive permission is always shown.
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: "email profile https://www.googleapis.com/auth/drive.readonly",
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +95,21 @@ export default function AuthScreen() {
             </div>
           )}
 
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+            className={`icon-motion w-full flex items-center justify-center gap-2.5 ${colors.bgInput} ${colors.bgHover} ${colors.textPrimary} border ${colors.borderBase} py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 disabled:pointer-events-none`}
+          >
+            {googleLoading ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-4">
+            <div className={`h-px flex-1 ${colors.borderBase}`} />
+            <span className={`${colors.textSecondary} text-xs tracking-wider uppercase`}>or</span>
+            <div className={`h-px flex-1 ${colors.borderBase}`} />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {!isLogin && (
               <div className="relative">
@@ -116,14 +152,14 @@ export default function AuthScreen() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className={`icon-motion w-full flex items-center justify-center gap-2 ${colors.btnPrimary} py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 disabled:pointer-events-none mt-4`}
             >
               {loading ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <>
-                  {isLogin ? "Sign In" : "Create Account"}
+                  {isLogin ? "Sign In with Email" : "Create Account"}
                   <ArrowRight size={16} />
                 </>
               )}
