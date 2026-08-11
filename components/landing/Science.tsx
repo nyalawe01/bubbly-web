@@ -1,38 +1,35 @@
-import {
-  Squares2X2Icon,
-  QuestionMarkCircleIcon,
-  DocumentTextIcon,
-  ChatBubbleLeftRightIcon,
-} from '@heroicons/react/24/outline'
+import { ArrowPathIcon, QuestionMarkCircleIcon, DocumentTextIcon, ChatBubbleLeftRightIcon, ClockIcon } from '@heroicons/react/24/outline'
 
 const methods = [
   {
-    icon: Squares2X2Icon,
     method: 'Active Recall',
     feature: 'AI Flashcards',
-    description:
-      'Retrieving information beats rereading every time. Bubbly auto-generates flashcards so you can practice real recall.',
+    icon: ArrowPathIcon,
+    description: 'Retrieving information beats rereading every time. Bubbly auto-generates flashcards so you can practice real recall — not passive review.',
   },
   {
-    icon: QuestionMarkCircleIcon,
     method: 'Practice Testing',
     feature: 'AI Quizzes',
-    description:
-      'Testing yourself improves exam performance more than rereading. Bubbly generates quizzes so you find gaps early.',
+    icon: QuestionMarkCircleIcon,
+    description: 'Testing yourself improves exam performance more than rereading. Bubbly generates quizzes with multiple formats so you find gaps early.',
   },
   {
-    icon: DocumentTextIcon,
     method: 'Spaced Repetition',
-    feature: 'AI Notes',
-    description:
-      'Reviewing over time locks information into long-term memory. Bubbly creates organized notes you can revisit anytime.',
+    feature: 'Persistent Assets',
+    icon: ClockIcon,
+    description: 'Reviewing over time locks information into long-term memory. Bubbly saves every generated asset so you can revisit on your schedule.',
   },
   {
-    icon: ChatBubbleLeftRightIcon,
     method: 'Self-Explanation',
     feature: 'AI Tutor',
-    description:
-      'Explaining concepts deepens understanding. Bubbly\'s AI Tutor lets you ask questions and talk through ideas 24/7.',
+    icon: ChatBubbleLeftRightIcon,
+    description: 'Explaining concepts deepens understanding. Bubbly\'s AI Tutor lets you ask questions and talk through ideas 24/7, grounded in your material.',
+  },
+  {
+    method: 'Elaborative Interrogation',
+    feature: 'AI Summaries',
+    icon: DocumentTextIcon,
+    description: 'Asking "why" and "how" builds stronger memory traces. Summaries highlight key relationships so you understand, not just memorize.',
   },
 ]
 
@@ -45,11 +42,10 @@ export default function Science() {
             Built on learning science
           </p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-balance text-gray-900 sm:text-4xl lg:text-5xl">
-            AI study tools built on how your brain learns.
+            Built around how effective studying works.
           </h2>
           <p className="mt-4 text-lg text-pretty text-gray-600">
-            Every feature is built on proven cognitive science, so you learn faster without
-            the burnout.
+            Every feature maps to a proven cognitive mechanism — so you learn faster without the burnout.
           </p>
         </div>
 

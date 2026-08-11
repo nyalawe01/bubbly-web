@@ -7,30 +7,24 @@ import {
 const platforms = [
   {
     icon: ComputerDesktopIcon,
-    name: 'Web Command Center',
-    description:
-      'Your full dashboard for document creation and AI assistance — chat with your tutor, generate study material, and keep everything in one Vault.',
-    cta: 'Open the Web App',
-    href: '/login',
+    name: 'Web',
+    description: 'Deep study sessions and full workspace — chat with your tutor, generate study material, and keep everything in one Vault.',
     status: 'Available now',
+    available: true,
   },
   {
     icon: DevicePhoneMobileIcon,
-    name: 'Mobile Companion',
-    description:
-      'On-the-go document capture and sharing, plus a voice-to-voice tutor mode for when you\'d rather talk it through than type.',
-    cta: 'Coming to the App Store',
-    href: '/login',
-    status: 'Coming soon',
+    name: 'Mobile',
+    description: 'Review flashcards, ask questions, and study on the move. Voice-to-voice tutor for when you\'d rather talk it through.',
+    status: 'In development',
+    available: false,
   },
   {
     icon: GlobeAltIcon,
     name: 'Browser Extension',
-    description:
-      'Real-time research aid right in your browser tab — summarize what you\'re reading and ask follow-up questions without losing your place.',
-    cta: 'Coming to the Chrome Store',
-    href: '/login',
-    status: 'Coming soon',
+    description: 'Bring Bubbly into your browsing workflow — summarize what you\'re reading and ask follow-up questions without losing your place.',
+    status: 'In development',
+    available: false,
   },
 ]
 
@@ -40,11 +34,10 @@ export default function StudyAnywhere() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-balance text-gray-900 sm:text-4xl lg:text-5xl">
-            Study anywhere with Bubbly.
+            Your study workspace, wherever you learn.
           </h2>
           <p className="mt-4 text-lg text-pretty text-gray-600">
-            Your workspace, everywhere you are — the same chat, Vault, and generators on web,
-            mobile, and in your browser.
+            The same chat, Vault, and generators on web, mobile, and in your browser.
           </p>
         </div>
 
@@ -60,7 +53,7 @@ export default function StudyAnywhere() {
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    platform.status === 'Available now'
+                    platform.available
                       ? 'bg-emerald-50 text-emerald-700'
                       : 'bg-gray-100 text-gray-500'
                   }`}
@@ -71,10 +64,10 @@ export default function StudyAnywhere() {
               <h3 className="mt-5 text-lg font-bold text-gray-900">{platform.name}</h3>
               <p className="mt-2 flex-1 text-sm/6 text-gray-600">{platform.description}</p>
               <a
-                href={platform.href}
+                href="/login"
                 className="mt-6 inline-flex items-center justify-center rounded-lg border border-indigo-600 px-4 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-600 hover:text-white"
               >
-                {platform.cta}
+                {platform.available ? 'Open Web App' : 'Join Waitlist'}
               </a>
             </div>
           ))}

@@ -5,10 +5,11 @@ import { MagneticButton } from './ui/magnetic-button'
 const logoImg = '/landing/logo.png'
 
 const mainNavLinks = [
-  { name: 'Features', href: '#features' },
-  { name: 'Solutions', href: '#solutions' },
+  { name: 'Product', href: '#product' },
   { name: 'How It Works', href: '#how-it-works' },
-  { name: 'FAQ', href: '#faq' },
+  { name: 'Features', href: '#features' },
+  { name: 'Pricing', href: '#pricing' },
+  { name: 'Resources', href: '#resources' },
 ]
 
 export default function Navbar() {
@@ -52,7 +53,7 @@ export default function Navbar() {
                 link: item.href,
               })),
               { label: 'Sign In', ariaLabel: 'Sign In', link: '/login' },
-              { label: 'Try for Free', ariaLabel: 'Try for Free', link: '/login' },
+              { label: 'Start Free', ariaLabel: 'Start Free', link: '/login' },
             ]}
             displaySocials={false}
             displayItemNumbering={true}
@@ -79,7 +80,7 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Desktop Top Right: Sign in & Try for Free */}
+        {/* Desktop Top Right: Sign in & Start Free */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
           <a
             href="/login"
@@ -93,7 +94,7 @@ export default function Navbar() {
               href="/login"
               className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
             >
-              Try for Free
+              Start Free
             </a>
           </MagneticButton>
         </div>

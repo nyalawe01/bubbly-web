@@ -11,13 +11,55 @@ import { FilePreviewModal, type PreviewableFile } from "@/components/ui/FilePrev
 
 type ModelType = "instant" | "expert" | "vision";
 
+// Pastes longer than this are treated as a text-file attachment instead of being
+// dumped into the composer inline (keeps the prompt box clean for a short instruction).
+const PASTE_AS_ATTACHMENT_THRESHOLD = 1500;
+
+/** Owns the object URL lifecycle for a single image thumbnail — created once per
+ *  thumbnail and revoked on unmount, instead of leaking a new URL on every render. */
+function AttachmentThumb({ file }: { file: any }) {
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  const isImage = file?.type?.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif"].includes(String(file?.name || "").split(".").pop()?.toLowerCase() || "");
+  const fileExt = String(file?.name || "FILE").split(".").pop()?.toUpperCase() || "FILE";
+
+  useEffect(() => {
+    if (!isImage) { setPreviewUrl(""); return; }
+    const source = file?.raw || (file instanceof File ? file : null);
+    if (!source) { setPreviewUrl(""); return; }
+    const url = URL.createObjectURL(source);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file, isImage]);
+
+  return (
+    <>
+      {isImage && previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt={file?.name} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full p-2 flex flex-col justify-between bg-zinc-800">
+          <span className="text-[9px] font-bold text-zinc-400">{fileExt}</span>
+          <span className="text-[9px] font-bold text-white line-clamp-3 uppercase leading-tight">{file?.name}</span>
+        </div>
+      )}
+
+      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="text-[7px] font-bold bg-black/60 text-white px-1 py-0.5 rounded-[4px] uppercase backdrop-blur-sm">
+          {fileExt}
+        </span>
+      </div>
+    </>
+  );
+}
+
 interface ChatInputProps {
   isIncognito?: boolean;
   onToggleIncognito?: () => void;
   inputText: string;
   setInputText: (text: string) => void;
   attachedFiles: any[];
-  setAttachedFiles: (files: any[]) => void;
+  setAttachedFiles: React.Dispatch<React.SetStateAction<any[]>>;
   isGenerating: boolean;
   isRecording: boolean;
   recordingDuration: number;
@@ -106,6 +148,21 @@ export function ChatInput({
     }
   };
 
+  // Large pasted blocks become a text attachment (a "pasted notes.txt" File) instead
+  // of inflating the composer as inline text. The AI still reads the full content —
+  // handleSendMessage embeds it into the server payload (see page's handleSendMessage).
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData("text/plain").trim();
+    if (pasted.length <= PASTE_AS_ATTACHMENT_THRESHOLD) return;
+    e.preventDefault();
+    const id = `paste_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const file = new File([pasted], "pasted notes.txt", { type: "text/plain" });
+    setAttachedFiles(prev => [
+      ...prev,
+      { id, name: file.name, type: file.type, size: file.size, raw: file, pastedText: pasted },
+    ]);
+  };
+
   const modelIcons: Record<ModelType, React.ReactNode> = {
     instant: <Zap size={14} className="md:w-[16px] md:h-[16px]" />,
     expert: <Gem size={14} className="md:w-[16px] md:h-[16px]" />,
@@ -148,42 +205,33 @@ export function ChatInput({
           <div className="glow-line-right absolute bottom-0 h-[1.5px] w-1/2 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-70"></div>
         </div>
 
-        {/* Attached file thumbnails — clicking the thumbnail now opens a real
-            preview modal instead of doing nothing; the X button still removes it. */}
+        {/* Attached file thumbnails — clicking the thumbnail opens a real
+            preview modal; the X button removes just that attachment. */}
         {attachedFiles.length > 0 && (
           <div className="flex flex-wrap gap-1.5 md:gap-2 px-1.5 md:px-2 pt-1.5 pb-1.5">
             {attachedFiles.map((f, i) => {
-              const isImage = f.type?.startsWith('image/');
-              const fileExt = f.name?.split('.').pop()?.toUpperCase() || 'FILE';
-              const previewUrl = isImage && f instanceof File ? URL.createObjectURL(f) : '';
+              const fileExt = String(f?.name || "FILE").split(".").pop()?.toUpperCase() || "FILE";
 
               return (
                 <div
-                  key={f.id || i}
-                  onClick={() => setPreviewFile({ name: f.name, type: f.type, size: f.size, raw: f instanceof File ? f : undefined })}
+                  key={f?.id || i}
+                  onClick={() => setPreviewFile({
+                    name: f?.name,
+                    type: f?.type,
+                    size: f?.size,
+                    raw: f?.raw || (f instanceof File ? f : undefined),
+                  })}
                   className="relative w-16 md:w-[70px] h-16 md:h-[70px] rounded-[14px] overflow-hidden group border border-zinc-200 dark:border-zinc-700 bg-[#2d2d30] flex-shrink-0 shadow-sm cursor-pointer transition-transform hover:scale-[1.03]"
                 >
-                  {isImage && previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full p-2 flex flex-col justify-between bg-zinc-800">
-                      <span className="text-[9px] font-bold text-zinc-400">{fileExt}</span>
-                      <span className="text-[9px] font-bold text-white line-clamp-3 uppercase leading-tight">{f.name}</span>
-                    </div>
-                  )}
-
-                  <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[7px] font-bold bg-black/60 text-white px-1 py-0.5 rounded-[4px] uppercase backdrop-blur-sm">
-                      {fileExt}
-                    </span>
-                  </div>
+                  <AttachmentThumb file={f} />
 
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation(); // don't trigger the preview click underneath
-                      setAttachedFiles(attachedFiles.filter((x) => x.id !== f.id && x !== f));
+                      // Reference-based removal: filtering by f.id would drop every
+                      // id-less browser File at once (undefined !== undefined).
+                      setAttachedFiles(attachedFiles.filter((x) => x !== f));
                     }}
                     className="icon-motion absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 backdrop-blur-sm"
                   >
@@ -205,6 +253,7 @@ export function ChatInput({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={`Message bubbly ${modelNames[selectedModel]}...`}
             rows={1}
             className={`flex-1 w-full bg-transparent !outline-none py-1.5 md:py-1.5 ${colors.textPrimary} placeholder:${colors.textSecondary} text-[15px] md:text-[13px] font-medium resize-none min-h-[40px] md:min-h-[32px] max-h-[120px] md:max-h-[100px] overflow-y-auto hide-scrollbar`}

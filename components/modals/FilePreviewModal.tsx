@@ -13,9 +13,12 @@ interface DocPreviewModalProps {
   onClose: () => void;
   file: any;
   colors: any;
+  // Layering override for callers that render this nested inside another modal
+  // (e.g. VaultSourcePicker inside Quiz/Flashcards/... which are all z-50 too).
+  zClassName?: string;
 }
 
-export function FilePreviewModal({ open, onClose, file, colors }: DocPreviewModalProps) {
+export function FilePreviewModal({ open, onClose, file, colors, zClassName = "z-50" }: DocPreviewModalProps) {
   if (!open || !file) return null;
 
   const handleDownload = () => {
@@ -30,7 +33,7 @@ export function FilePreviewModal({ open, onClose, file, colors }: DocPreviewModa
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4"
+      className={`fixed inset-0 bg-black/70 backdrop-blur-sm ${zClassName} flex items-center justify-center p-3 md:p-4`}
       onClick={onClose}
     >
       <div

@@ -13,8 +13,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No vault sources selected." }, { status: 400 });
     }
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) throw new Error("Missing OpenRouter API Key");
+    const googleKey = process.env.GEMINI_API_KEY;
+    if (!googleKey) throw new Error("Missing Gemini API Key");
 
     const { supabase, getUser } = await createSupabaseServerClient(request);
     const user = await getUser();

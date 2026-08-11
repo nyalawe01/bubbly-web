@@ -12,8 +12,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File ID and content are required' }, { status: 400 });
     }
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) {
+    const googleKey = process.env.GEMINI_API_KEY;
+    if (!googleKey) {
       return NextResponse.json({ error: 'API key missing' }, { status: 500 });
     }
 

@@ -14,19 +14,24 @@
 //     2026-06-17) with zero code-level warning beyond an email — a single model ID
 //     with no fallback means a vendor deprecation is a full outage, not a Tuesday.
 //
-// Tiering:
-//   - chatFast    : GPT-OSS 120B (Groq) -> Gemini Flash (OpenRouter) — everyday chat
-//   - chatExpert  : DeepSeek (OpenRouter) — the "Expert" pill, deeper reasoning
-//   - chatVision  : Gemini Flash (OpenRouter) — image-understanding chat
-//   - router      : GPT-OSS 20B (Groq) — the intent classifier (must be fast/cheap)
-//   - generator   : GPT-OSS 120B (Groq) -> Gemini Flash (OpenRouter) — bulk structured
-//                   content: quiz/flashcards/slides/summary/exam/notebook-chat/diagrams
-//   - generatorPrecise : Gemini Flash -> DeepSeek (both OpenRouter) — output where a
+// Tiering: only two providers, Groq and Google Gemini (no OpenRouter for now).
+// Gemini runs through Google's OpenAI-compatible endpoint on the same
+// GEMINI_API_KEY, so all tiers share one client shape via callModel().
+//   - chatFast    : GPT-OSS 120B (Groq) -> Gemini 3.6 Flash — everyday chat
+//   - chatExpert  : Gemini 3.6 Flash -> 3.5 Flash — the "Expert" pill, deeper reasoning
+//   - chatVision  : Gemini 3.6 Flash (native vision) — image-understanding chat
+//   - router      : GPT-OSS 20B (Groq) -> Gemini 3.5 Flash Lite — intent classifier (must be fast/cheap)
+//   - generator   : Gemini 3.6 Flash -> 3.5 Flash -> GPT-OSS 120B (Groq) — bulk structured content:
+//                   quiz/flashcards/slides/summary/exam/notebook-chat/diagrams
+//   - generatorPrecise : Gemini 3.6 Flash -> 3.5 Flash -> GPT-OSS 120B — output where a
 //                   wrong answer is a trust failure, not a quality nit (AI grading).
-//                   Deliberately off the free Groq tier entirely for this one.
+// NOTE: model IDs are pinned to what THIS Gemini key actually serves. Older
+// gemini-2.5-* chat models 404 on the OpenAI-compatible endpoint ("no longer
+// available to new users") and the paid Pro tiers 429, so the flash family is
+// the reliable set here.
 import OpenAI from "openai";
 
-export type Provider = "groq" | "openrouter";
+export type Provider = "groq" | "gemini";
 
 export interface ModelCandidate {
   provider: Provider;
@@ -45,18 +50,30 @@ const GROQ_LOW_REASONING = { reasoning_effort: "low" };
 export const MODELS = {
   chatFast: [
     { provider: "groq", model: "openai/gpt-oss-120b", extraParams: GROQ_LOW_REASONING },
-    { provider: "openrouter", model: "google/gemini-2.5-flash" },
+    { provider: "gemini", model: "gemini-3.6-flash" },
   ],
-  chatExpert: [{ provider: "openrouter", model: "deepseek/deepseek-chat" }],
-  chatVision: [{ provider: "openrouter", model: "google/gemini-2.5-flash" }],
-  router: [{ provider: "groq", model: "openai/gpt-oss-20b", extraParams: GROQ_LOW_REASONING }],
-  generator: [
+  chatExpert: [
+    { provider: "gemini", model: "gemini-3.6-flash" },
+    { provider: "gemini", model: "gemini-3.5-flash" },
+  ],
+  chatVision: [
+    { provider: "gemini", model: "gemini-3.6-flash" },
+    { provider: "gemini", model: "gemini-3.5-flash" },
     { provider: "groq", model: "openai/gpt-oss-120b", extraParams: GROQ_LOW_REASONING },
-    { provider: "openrouter", model: "google/gemini-2.5-flash" },
+  ],
+  router: [
+    { provider: "groq", model: "openai/gpt-oss-20b", extraParams: GROQ_LOW_REASONING },
+    { provider: "gemini", model: "gemini-3.5-flash-lite" },
+  ],
+  generator: [
+    { provider: "gemini", model: "gemini-3.6-flash" },
+    { provider: "gemini", model: "gemini-3.5-flash" },
+    { provider: "groq", model: "openai/gpt-oss-120b", extraParams: GROQ_LOW_REASONING },
   ],
   generatorPrecise: [
-    { provider: "openrouter", model: "google/gemini-2.5-flash" },
-    { provider: "openrouter", model: "deepseek/deepseek-chat" },
+    { provider: "gemini", model: "gemini-3.6-flash" },
+    { provider: "gemini", model: "gemini-3.5-flash" },
+    { provider: "groq", model: "openai/gpt-oss-120b", extraParams: GROQ_LOW_REASONING },
   ],
 } satisfies Record<string, ModelCandidate[]>;
 
@@ -83,12 +100,12 @@ export const IMAGE_MODEL = {
 
 const BASE_URLS: Record<Provider, string> = {
   groq: "https://api.groq.com/openai/v1",
-  openrouter: "https://openrouter.ai/api/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai/",
 };
 
 const KEY_ENV: Record<Provider, string> = {
   groq: "GROQ_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
+  gemini: "GEMINI_API_KEY",
 };
 
 /** OpenAI-compatible client for a provider. Throws a clear error if its key is unset. */
@@ -106,7 +123,7 @@ export function chatModelFor(modelType?: string): ModelCandidate[] {
 }
 
 // Failover triggers: capacity/quota/availability errors, not request-shape bugs.
-//   402 = out of credits (OpenRouter), 404 = model doesn't exist — a FULLY
+//   402 = out of credits, 404 = model doesn't exist — a FULLY
 //   decommissioned model (not just soft-deprecated) 404s rather than erroring at
 //   generation time, and that's exactly the scenario this ladder exists for, so it
 //   must be in this set. 413 = request too large for the provider's per-request

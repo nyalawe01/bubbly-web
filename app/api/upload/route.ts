@@ -44,9 +44,8 @@ interface PendingImage {
  *  means the diagram question prompt gets less context, not a failed upload. */
 async function describeImage(openai: OpenAI, buffer: Buffer, mimeType: string): Promise<string | null> {
   const visionModels = [
-    "google/gemini-2.5-flash",
-    "google/gemini-1.5-flash:free",
-    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
   ];
   for (const visionModel of visionModels) {
     try {
@@ -180,10 +179,9 @@ export async function POST(request: Request) {
 
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
     const googleKey = process.env.GEMINI_API_KEY;
 
-    if (!openRouterKey || !googleKey) throw new Error("Missing API Keys");
+    if (!googleKey) throw new Error("Missing API Keys");
 
     const { supabase, getUser } = await createSupabaseServerClient(request);
     const user = await getUser();
@@ -268,14 +266,13 @@ export async function POST(request: Request) {
     } else if (fileName.match(/\.(svg)$/i)) {
       textContent = new TextDecoder("utf-8").decode(arrayBuffer);
     } else if (fileName.match(/\.(pdf|png|jpg|jpeg|webp|gif)$/i)) {
-      const openai = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: openRouterKey });
+      const openai = new OpenAI({ baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", apiKey: googleKey });
       const prompt =
         "Extract and transcribe all text from this file exactly as it appears. If there are tables, charts, or diagrams, describe them and extract their data. Return only raw extracted text.";
 
       const visionModels = [
-        "google/gemini-2.5-flash",
-        "google/gemini-1.5-flash:free",
-        "meta-llama/llama-3.2-11b-vision-instruct:free",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
       ];
 
       for (const visionModel of visionModels) {
@@ -331,6 +328,10 @@ export async function POST(request: Request) {
         file_type: file.type || "unknown",
         file_size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
         ai_summary: aiSummary,
+        // Full extracted text so the Vault preview modal can render the real document
+        // without reconstructing it from embedding chunks. Older documents predating
+        // this column got it on their row, so the vault page falls back to the chunks.
+        file_content: textContent,
       })
       .select()
       .single();
@@ -338,7 +339,7 @@ export async function POST(request: Request) {
     if (docError) throw new Error(`Database Error: ${docError.message}`);
 
     if (pendingImages.length) {
-      const openaiForCaptions = new OpenAI({ baseURL: "https://openrouter.ai/api/v1", apiKey: openRouterKey });
+      const openaiForCaptions = new OpenAI({ baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", apiKey: googleKey });
       await Promise.all(
         pendingImages.map((image) => persistDocumentImage(supabase, openaiForCaptions, user.id, docData.id, image))
       );

@@ -25,7 +25,7 @@ interface ChatViewProps {
   inputText: string;
   setInputText: (text: string) => void;
   attachedFiles: any[];
-  setAttachedFiles: (files: any[]) => void;
+  setAttachedFiles: React.Dispatch<React.SetStateAction<any[]>>;
   selectedModel: "instant" | "expert" | "vision";
   showModelPills: boolean;
   isRecording: boolean;

@@ -44,12 +44,11 @@ export default function PrivacyPage() {
         <p>
           To actually generate a response, relevant parts of your message (and, if you've attached
           them, your document text or images) are sent to whichever AI provider is handling that
-          request — currently Groq, OpenRouter (which itself routes to providers like DeepSeek and
-          Google Gemini), Google's Gemini API directly, and fal.ai for image generation. These
-          providers process the content to return a result to you; they are not authorized to use it
-          for their own advertising. If you use the web-search feature, your search query (not your
-          account identity) is sent to public search APIs (DuckDuckGo, Wikipedia, SearXNG) to fetch
-          results.
+          request — currently Groq, Google's Gemini API directly, and fal.ai for image
+          generation. These providers process the content to return a result to you; they are
+          not authorized to use it for their own advertising. If you use the web-search feature,
+          your search query (not your account identity) is sent to public search APIs (DuckDuckGo,
+          Wikipedia, SearXNG) to fetch results.
         </p>
       </LegalSection>
 

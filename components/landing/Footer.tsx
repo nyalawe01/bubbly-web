@@ -5,29 +5,23 @@ const logoImg = '/landing/logo.png'
 
 const navigation = {
   product: [
-    { name: 'AI Notes', href: '#features' },
-    { name: 'AI Summary', href: '#features' },
-    { name: 'AI Flashcards', href: '#features' },
-    { name: 'AI Quizzes', href: '#features' },
-    { name: 'AI Tutor', href: '#features' },
+    { name: 'AI Tutor', href: '#ai-tutor' },
+    { name: 'Vault', href: '#vault' },
+    { name: 'Quizzes', href: '#features' },
+    { name: 'Flashcards', href: '#features' },
+    { name: 'Slides', href: '#features' },
+    { name: 'Exams', href: '#features' },
   ],
-solutions: [
-    { name: 'Web Command Center', href: '#platforms' },
-    { name: 'Mobile Companion', href: '#platforms' },
-    { name: 'Browser Extension', href: '#platforms' },
-    { name: 'Study Vault', href: '#platforms' },
-    { name: 'Voice-to-Voice Tutor', href: '#platforms' },
-  ],
-  support: [
+  resources: [
     { name: 'Help Center', href: '/help' },
     { name: 'FAQ', href: '#faq' },
-    { name: 'Privacy Policy', href: '/privacy' },
-    { name: 'Terms of Service', href: '/terms' },
+    { name: 'Learning Resources', href: '#science' },
   ],
   company: [
     { name: 'About', href: '#compare' },
-    { name: 'Contact Us', href: '/help' },
-    { name: 'Status', href: '/help' },
+    { name: 'Contact', href: '/help' },
+    { name: 'Privacy', href: '/privacy' },
+    { name: 'Terms', href: '/terms' },
   ],
   social: [
     {
@@ -127,8 +121,9 @@ export default function Footer() {
               <span className="text-2xl font-bold text-white tracking-tight">Bubbly</span>
             </a>
             <p className="text-sm text-gray-400 leading-relaxed max-w-md">
-              The AI study tool for faster, more effective learning. Turn any material into
-              notes, flashcards, quizzes, and a 24/7 AI tutor — on web, mobile, and your browser.
+              The AI workspace for modern students. Turn your materials into summaries,
+              flashcards, quizzes, slides, practice exams, and an AI tutor — on web, mobile,
+              and your browser.
             </p>
 
             {/* Social Links */}
@@ -149,7 +144,7 @@ export default function Footer() {
           </div>
 
           {/* Navigation Columns */}
-          <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0 md:grid-cols-4">
+          <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0 md:grid-cols-3">
             <div>
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Product</h3>
               <ul role="list" className="mt-6 space-y-3.5">
@@ -167,27 +162,15 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Solutions</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Resources</h3>
               <ul role="list" className="mt-6 space-y-3.5">
-                {navigation.solutions.map((item) => (
+                {navigation.resources.map((item) => (
                   <li key={item.name}>
                     <a
                       href={item.href}
                       onClick={(e) => scrollToSection(e, item.href)}
                       className="text-sm text-gray-400 hover:text-white transition-colors"
                     >
-                      {item.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Support</h3>
-              <ul role="list" className="mt-6 space-y-3.5">
-                {navigation.support.map((item) => (
-                  <li key={item.name}>
-                    <a href={item.href} className="text-sm text-gray-400 hover:text-white transition-colors">
                       {item.name}
                     </a>
                   </li>
@@ -212,7 +195,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-16 border-t border-gray-800/80 pt-8 sm:flex sm:items-center sm:justify-between">
           <p className="text-xs text-gray-500 leading-5">
-            &copy; {new Date().getFullYear()} Bubbly. Built for modern students worldwide.
+            &copy; {new Date().getFullYear()} Bubbly. The AI workspace for modern students.
           </p>
           <div className="mt-4 flex gap-x-6 sm:mt-0 text-xs text-gray-500">
             <a href="/privacy" className="hover:text-gray-400">Privacy Policy</a>

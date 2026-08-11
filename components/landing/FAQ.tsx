@@ -4,34 +4,39 @@ import { PlusIcon } from '@heroicons/react/20/solid'
 
 const faqs = [
   {
-    question: 'Who is Bubbly for?',
+    question: 'What is Bubbly?',
     answer:
-      'Bubbly is built for students — high school, college, university, and grad school — as well as self-learners, exam preppers, educators, and professionals who want to turn any material into a structured AI study system.',
+      'Bubbly is an AI-powered study workspace that helps students understand, organize, and practice their coursework. Upload your materials and Bubbly builds your entire study system — summaries, flashcards, quizzes, slides, practice exams, and an AI tutor.',
   },
   {
-    question: 'How is Bubbly different from other AI tools?',
+    question: 'Can Bubbly use my own notes?',
     answer:
-      'Unlike general-purpose chatbots, Bubbly is grounded in your own material. Upload a lecture, PDF, slides, or link and it builds notes, summaries, flashcards, quizzes, and a tutor context from exactly what you need to know — not generic answers.',
+      'Yes. Your uploaded study materials are stored in your private Vault and used to ground AI responses and generate study resources. Everything is scoped to you with row-level security.',
   },
   {
-    question: 'How does Bubbly work?',
+    question: 'What can Bubbly generate?',
     answer:
-      'Create a study session, upload or record your material, and Bubbly instantly processes it into organized study tools: AI notes, summaries, flashcards, quizzes, and an AI tutor you can chat with any time. On mobile you can even talk through it out loud.',
+      'Summaries, flashcards, quizzes (MCQ, multi-select, true/false, short answer, diagram), slides (detailed or presenter format), and practice exams (guide or full exam mode). All grounded in your materials.',
   },
   {
-    question: 'What types of files are accepted?',
+    question: 'Can I ask questions about my documents?',
     answer:
-      'You can upload PDFs, Word documents, slides (PPTX), spreadsheets (XLSX), text files, audio files, web links, and YouTube videos — or record a live lecture directly from the app.',
+      'Yes. The AI Tutor uses your stored materials as context when answering questions. You\'ll see source citations [src=N | filename] alongside every response so you know exactly where the answer comes from.',
   },
   {
-    question: 'Are there usage limits?',
+    question: 'Is Bubbly just another AI chatbot?',
     answer:
-      'Getting started is free — no credit card required. Generous free tiers cover everyday study sessions, and you can upgrade when you need more processing, storage, and priority access.',
+      'No. The AI Tutor is only one part of Bubbly. The platform combines your knowledge Vault, AI tutor, and automated study generators into one workspace. Your materials power everything — not generic AI output.',
   },
   {
-    question: 'Is my data private?',
+    question: 'Can I study on my phone?',
     answer:
-      'Yes. Everything you upload lives in your private Vault, protected by per-user row-level security, and your questions are answered only from your own material.',
+      'The web app works great on mobile browsers. Native iOS and Android apps are in development — join the waitlist to get early access.',
+  },
+  {
+    question: 'Can I use Bubbly without saving a conversation?',
+    answer:
+      'Yes, through Incognito Mode. It starts a fresh AI conversation without saving to your study history, skips the semantic cache, and never writes to your chat sessions. Perfect for quick questions or sensitive topics.',
   },
 ]
 
@@ -45,7 +50,7 @@ export default function FAQ() {
             Everything you need to know.
           </h2>
           <p className="mt-4 text-lg text-pretty text-gray-600">
-            Questions about the product, billing, and how Bubbly works.
+            Questions about the product, privacy, and how Bubbly works.
           </p>
         </div>
 

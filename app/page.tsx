@@ -5,10 +5,15 @@ import Hero from "@/components/landing/Hero";
 import Problems from "@/components/landing/Problems";
 import StudySystem from "@/components/landing/StudySystem";
 import Upload from "@/components/landing/Upload";
+import AITutor from "@/components/landing/AITutor";
+import StudyGenerators from "@/components/landing/StudyGenerators";
+import Vault from "@/components/landing/Vault";
 import HowItWorks from "@/components/landing/HowItWorks";
+import BackgroundAI from "@/components/landing/BackgroundAI";
+import StudyAnywhere from "@/components/landing/StudyAnywhere";
+import VoiceVisual from "@/components/landing/VoiceVisual";
 import Science from "@/components/landing/Science";
 import Compare from "@/components/landing/Compare";
-import StudyAnywhere from "@/components/landing/StudyAnywhere";
 import Stats from "@/components/landing/Stats";
 import Testimonials from "@/components/landing/Testimonials";
 import FAQ from "@/components/landing/FAQ";
@@ -16,9 +21,9 @@ import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
-  title: "Bubbly | The #1 AI Study Tool for Modern Students",
+  title: "Bubbly | Turn Your Study Materials Into Your Personal AI Study System",
   description:
-    "Turn lectures and any material into a complete, science-backed AI study system — AI notes, summaries, flashcards, quizzes, and a 24/7 AI tutor grounded in your own notes. Free to start, on web, mobile, and your browser.",
+    "Upload your notes, PDFs, slides, or text. Bubbly turns them into summaries, flashcards, quizzes, practice exams, presentations, and an AI tutor that understands what you're studying.",
 };
 
 export default function LandingPage() {
@@ -34,10 +39,15 @@ export default function LandingPage() {
         <Problems />
         <StudySystem />
         <Upload />
+        <AITutor />
+        <StudyGenerators />
+        <Vault />
         <HowItWorks />
+        <BackgroundAI />
+        <StudyAnywhere />
+        <VoiceVisual />
         <Science />
         <Compare />
-        <StudyAnywhere />
         <Stats />
         <Testimonials />
         <FAQ />

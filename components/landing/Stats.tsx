@@ -1,8 +1,8 @@
 const stats = [
-  { value: '5K+', label: 'Students learning smarter' },
-  { value: '200+', label: 'Schools & universities' },
-  { value: '40+', label: 'Countries worldwide' },
-  { value: '50K+', label: 'Study sessions created' },
+  { value: '30', label: 'Interface languages' },
+  { value: '5+', label: 'Study generation tools' },
+  { value: '24/7', label: 'AI study assistance' },
+  { value: '3', label: 'Platforms (Web, Mobile, Extension)' },
 ]
 
 export default function Stats() {

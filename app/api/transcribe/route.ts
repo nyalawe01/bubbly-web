@@ -1,12 +1,12 @@
 // app/api/transcribe/route.ts
 //
-// Transcribes voice-recorded messages. Moved from OpenRouter's
-// microsoft/mai-transcribe-1.5 (a chat-completions "input_audio" extension) to
-// Groq's whisper-large-v3-turbo — a real audio-transcription endpoint, not a
-// chat-completion shape, so it uses openai.audio.transcriptions.create() rather
-// than callModel()'s chat-completion wrapper. ~9x cheaper than OpenAI's own
-// Whisper ($0.04/hr vs $0.36/hr), consolidates onto a key we already hold, and
-// runs on Groq's LPU hardware at ~217-228x real-time.
+// Transcribes voice-recorded messages via Groq's whisper-large-v3-turbo — a real
+// audio-transcription endpoint, not a chat-completion shape, so it uses
+// openai.audio.transcriptions.create() rather than callModel()'s chat-completion
+// wrapper. ~9x cheaper than OpenAI's own Whisper ($0.04/hr vs $0.36/hr),
+// consolidates onto a key we already hold, and runs on Groq's LPU hardware at
+// ~217-228x real-time. (Previously routed through an OpenRouter chat-completions
+// "input_audio" model.)
 import { NextResponse } from "next/server";
 import { toFile } from "openai";
 import { getClient } from "@/lib/ai/models";

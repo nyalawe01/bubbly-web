@@ -10,7 +10,7 @@ interface UserMessageProps {
   colors: any;
 }
 
-export function UserMessage({ message, onFileClick, onEdit, colors }: UserMessageProps) {
+export function UserMessage({ message, onEdit, colors }: UserMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
   const [copied, setCopied] = useState(false);
@@ -26,9 +26,11 @@ export function UserMessage({ message, onFileClick, onEdit, colors }: UserMessag
     ? text.slice(0, MAX_CHARS) + (text.length > MAX_CHARS ? '...' : '')
     : text;
 
+  // Opens the drawer preview directly. Previously it ALSO fired the page's legacy
+  // onFileClick (which opened a second, content-less doc modal behind it) — the
+  // standalone preview already renders the real file content, so that's dropped.
   const handleFileClick = (file: any) => {
-    onFileClick?.(file); // legacy hook, if the page still uses it for something
-    setPreviewFile({ name: file.name, type: file.type, size: file.size, url: file.url });
+    setPreviewFile({ name: file.name, type: file.type, size: file.size, url: file.url, raw: file.raw || (file instanceof File ? file : undefined) });
   };
 
   const handleCopy = () => {

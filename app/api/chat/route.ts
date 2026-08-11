@@ -14,10 +14,9 @@ export async function POST(request: Request) {
 
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
     const googleKey = process.env.GEMINI_API_KEY;
 
-    if (!openRouterKey || !googleKey) {
+    if (!googleKey) {
       return NextResponse.json({ error: "Missing required API Keys" }, { status: 500 });
     }
 
@@ -100,10 +99,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Kept separate from CHAT_SYSTEM_PROMPT (not just concatenated into one string)
-    // so the OpenRouter-only tiers below can mark the ~1.8k-token stable prompt as a
-    // cache_control breakpoint while this per-turn part (vault/search/mode context)
-    // stays out of the cached prefix, since it differs on every single call.
+    // Kept separate from CHAT_SYSTEM_PROMPT (not concatenated into one string)
+    // so the per-turn part (vault/search/mode context) stays out of the stable
+    // prefix — it differs on every single call, and the ~1.8k-token stable prompt
+    // falls comfortably over Gemini's prompt-caching minimum.
     let systemAddenda = formatVaultContextBlock(vaultChunks);
 
     // Real sources shown to the student at the end of the reply — one entry per
@@ -200,34 +199,21 @@ export async function POST(request: Request) {
       })) || [];
     formattedHistory.push({ role: "user", content: message });
 
-    // Expert/Vision go straight to OpenRouter with no Groq candidate in their
-    // ladder (see lib/ai/models.ts), so it's safe to mark CHAT_SYSTEM_PROMPT as an
-    // explicit cache_control breakpoint for them — OpenRouter/Gemini only caches a
-    // prefix when it's split out like this (confirmed: supports_implicit_caching is
-    // false for every gemini-2.5-flash endpoint OpenRouter reports; caching there
-    // requires this explicit split, not just a long stable string). CHAT_SYSTEM_PROMPT
-    // is ~1.8k tokens, comfortably over Gemini's 1024-token cache minimum. Left as a
-    // single plain string for every other tier (Groq-first) since Groq doesn't
-    // recognize cache_control and DeepSeek's OpenRouter endpoints (StreamLake/
-    // DeepInfra/Novita) don't support caching at all regardless of request shape, so
-    // there's nothing to gain there — only risk — from changing the message shape.
-    const isPureOpenRouterTier = resolvedModelType === "expert" || resolvedModelType === "vision" || resolvedModelType === "gemini";
-    const systemMessage = isPureOpenRouterTier
-      ? {
-          role: "system",
-          content: [
-            { type: "text", text: CHAT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-            ...(systemAddenda ? [{ type: "text", text: systemAddenda }] : []),
-          ],
-        }
-      : { role: "system", content: CHAT_SYSTEM_PROMPT + systemAddenda };
+    // Single plain-string system message for every tier. The old code split the
+    // system prompt into a content-array with an Anthropic-style cache_control
+    // breakpoint for the (then OpenRouter-only) expert/vision tiers — but every LLM
+    // tier now runs on the OpenAI-compatible shape via callModel() (Groq and
+    // Gemini), and Gemini's OpenAI-compatible endpoint does not consume
+    // cache_control; prompt caching is automatic. A plain string is what all
+    // candidates expect, so there's nothing to gain from a different shape.
+    const systemMessage = { role: "system", content: CHAT_SYSTEM_PROMPT + systemAddenda };
 
-    // Pick the chat tier: instant/default -> Groq (fast, falls back to OpenRouter
-    // Gemini on a rate limit/deprecation), expert -> DeepSeek, vision -> Gemini
-    // Flash. Groq's near-instant first token is what makes this feel like ChatGPT.
-    // (See lib/ai/models.ts.) callModel() fails over on a rejected create() call —
-    // that happens before any stream bytes are consumed, so this is safe for the
-    // streaming case too, never a mid-stream provider switch.
+    // Pick the chat tier: instant/default -> Groq GPT-OSS 120B (fast, falls back to
+    // Gemini Flash on a rate limit/deprecation), expert -> Gemini Pro, vision ->
+    // Gemini Flash. Groq's near-instant first token is what makes this feel like
+    // ChatGPT. (See lib/ai/models.ts.) callModel() fails over on a rejected
+    // create() call — that happens before any stream bytes are consumed, so this
+    // is safe for the streaming case too, never a mid-stream provider switch.
     const completionStream: any = await callModel(chatModelFor(resolvedModelType), {
       messages: [
         systemMessage as any,

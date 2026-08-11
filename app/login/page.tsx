@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, Globe, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Mail, Lock, User, Globe, ArrowRight, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { createClient } from "@/app/utils/supabase";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { Reveal } from "@/components/ui/motion";
@@ -15,8 +16,23 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  // Single auth surface in the app: if the visitor is already signed in, send
+  // them straight to the workspace instead of re-showing the form.
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        router.replace("/chat");
+      } else {
+        setCheckingSession(false);
+      }
+    };
+    checkSession();
+  }, [router, supabase]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -71,6 +87,19 @@ export default function AuthScreen() {
   return (
     <div className={`min-h-[100dvh] flex flex-col items-center justify-center p-4 ${colors.bgApp} relative overflow-hidden`}>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-[var(--accent)]/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {checkingSession ? (
+        <div className="z-10 flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-[var(--accent)]" size={28} />
+        </div>
+      ) : (<>
+      {/* Back to home */}
+      <Link
+        href="/"
+        className={`z-10 self-start mb-6 inline-flex items-center gap-1.5 text-sm ${colors.textSecondary} hover:opacity-80 transition-opacity`}
+      >
+        <ArrowLeft size={15} /> Back to Bubbly
+      </Link>
 
       {/* Static wordmark — no floating animation. */}
       <div className="mb-10 z-10">
@@ -177,6 +206,7 @@ export default function AuthScreen() {
           </div>
         </div>
       </Reveal>
+      </>)}
     </div>
   );
 }

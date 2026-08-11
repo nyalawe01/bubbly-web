@@ -6,9 +6,9 @@
 //  2. UserMessage — clicking a file pill on an already-sent message
 //     (a {name, url, type} descriptor from your backend/Supabase storage)
 //
-// Handles images, PDFs, and text-like files inline; falls back to a clean
-// "no inline preview available" state with a download action for formats
-// that genuinely can't be rendered in a modal (docx, pptx, xlsx, zip).
+// Handles images, PDFs, and text-like files inline; extracts DOCX/XLSX content
+// in-browser; falls back to a clean "no inline preview available" state with a
+// download action only for formats that genuinely can't be rendered (zip, pptx).
 
 import { useEffect, useMemo, useState } from "react";
 import { X, Download, FileText, File as FileIcon } from "lucide-react";
@@ -40,6 +40,33 @@ function formatBytes(bytes?: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+/** In-browser document text extraction for the formats that can't render directly
+ *  (DOCX via mammoth, XLSX/XLS via SheetJS). Both libs ship Node-first entry points,
+ *  so they're dynamically imported client-side with their socket/fs-free browser
+ *  builds; on any failure the modal falls back to the download-only state. */
+async function extractRichText(file: PreviewableFile): Promise<string> {
+  const ext = getExtension(file.name);
+  const arrayBuffer = file.raw
+    ? await file.raw.arrayBuffer()
+    : file.url
+      ? await (await fetch(file.url)).arrayBuffer()
+      : null;
+  if (!arrayBuffer) return "";
+
+  if (ext === "docx") {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value || "";
+  }
+
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+  return workbook.SheetNames.map((name) => {
+    const sheet = workbook.Sheets[name];
+    return `--- Sheet: ${name} ---\n` + XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+  }).join("\n\n");
+}
+
 export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProps) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState(false);
@@ -48,6 +75,9 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
   const isImage = file?.type?.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif"].includes(ext);
   const isPdf = file?.type === "application/pdf" || ext === "pdf";
   const isText = TEXT_EXTENSIONS.includes(ext);
+  // DOCX + spreadsheets get parsed in-browser so the modal shows their real content
+  // instead of the "no inline preview" download-only fallback.
+  const isRichDocument = ["docx", "xlsx", "xls"].includes(ext);
 
   // Resolve an actual displayable URL for both raw Files and remote files.
   const objectUrl = useMemo(() => {
@@ -63,22 +93,34 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
   }, [objectUrl, file]);
 
   useEffect(() => {
-    if (!isOpen || !file || !isText) {
+    if (!isOpen || !file) {
       setTextContent(null);
+      setLoadingText(false);
       return;
     }
+
+    if (!isText && !isRichDocument) {
+      setTextContent(null);
+      setLoadingText(false);
+      return;
+    }
+
     setLoadingText(true);
     (async () => {
       try {
-        const text = file.raw ? await file.raw.text() : file.url ? await (await fetch(file.url)).text() : "";
-        setTextContent(text.slice(0, 20000)); // cap for very large files
+        if (isText) {
+          const text = file.raw ? await file.raw.text() : file.url ? await (await fetch(file.url)).text() : "";
+          setTextContent(text.slice(0, 30000)); // cap for very large files
+        } else {
+          setTextContent((await extractRichText(file)).slice(0, 30000));
+        }
       } catch {
         setTextContent(null);
       } finally {
         setLoadingText(false);
       }
     })();
-  }, [isOpen, file, isText]);
+  }, [isOpen, file, isText, isRichDocument]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -121,13 +163,18 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
             <img src={objectUrl} alt={file.name} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
           ) : isPdf && objectUrl ? (
             <iframe src={objectUrl} className="w-full h-[65vh] rounded-lg bg-white" title={file.name} />
-          ) : isText ? (
+          ) : isText || isRichDocument ? (
             loadingText ? (
-              <div className="text-zinc-500 text-sm">Loading preview…</div>
+              <div className="text-zinc-500 text-sm flex items-center gap-2">
+                <span className="inline-block animate-spin w-3 h-3 border border-zinc-500 border-t-transparent rounded-full" />
+                Extracting document content…
+              </div>
             ) : (
-              <pre className="w-full text-xs text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
-                {textContent || "No preview available."}
-              </pre>
+              <div className="w-full h-full overflow-auto flex">
+                <pre className="w-full text-xs text-zinc-300 whitespace-pre-wrap break-words font-mono leading-relaxed m-0">
+                  {textContent || "No extractable content found."}
+                </pre>
+              </div>
             )
           ) : (
             <div className="flex flex-col items-center gap-3 text-center py-8">

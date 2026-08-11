@@ -39,8 +39,8 @@ export async function POST(request: Request) {
   try {
     const { prompt, context, type } = await request.json();
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) throw new Error("Missing OpenRouter API Key");
+    const googleKey = process.env.GEMINI_API_KEY;
+    if (!googleKey) throw new Error("Missing Gemini API Key");
 
     const systemPrompt = `You generate clean, well-structured Mermaid diagrams for academic/educational use.
 

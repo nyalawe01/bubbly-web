@@ -84,8 +84,8 @@ export async function generateQuizContent(supabase: any, userId: string, config:
   // observed) — deliberately NOT shrunk to fit Groq's gpt-oss-120b free-tier 8K
   // tokens/min cap, since a large quiz's prompt + 6000 can exceed that on its own.
   // That's fine: callModel()'s fallback ladder treats Groq's 413 ("too large") as a
-  // failover trigger, so oversized requests transparently retry on the OpenRouter
-  // Gemini candidate instead of truncating output to force-fit the smaller tier.
+  // failover trigger, so oversized requests transparently retry on the Gemini
+  // candidate instead of truncating output to force-fit the smaller tier.
   const rawQuiz = await complete(system, user, 6000);
   const quiz = postProcessQuiz(rawQuiz, documentImages.map((img) => img.url));
   return {

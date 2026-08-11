@@ -11,8 +11,8 @@ export async function POST(request: Request) {
   try {
     const { format, language, length, description, sources } = await request.json();
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) {
+    const googleKey = process.env.GEMINI_API_KEY;
+    if (!googleKey) {
       return NextResponse.json({ error: 'API key missing' }, { status: 500 });
     }
 

@@ -18,8 +18,8 @@ export async function POST(request: Request) {
   try {
     const { questionCount, difficulty, topic, sources, minQuestions } = await request.json();
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) {
+    const googleKey = process.env.GEMINI_API_KEY;
+    if (!googleKey) {
       return NextResponse.json({ error: 'API key missing' }, { status: 500 });
     }
 
@@ -83,8 +83,8 @@ Exactly ${numQuestions} questions at ${difficulty} difficulty.`;
       // shrunk to fit inside Groq gpt-oss-120b's free-tier 8K-tokens/min cap on its own,
       // since a large quiz's prompt + 6000 can exceed that regardless. callModel()'s
       // fallback ladder treats Groq's 413 ("too large") as a failover trigger, so an
-      // oversized request transparently retries on OpenRouter's Gemini candidate
-      // instead of truncating output to force-fit the smaller tier.
+      // oversized request transparently retries on Gemini's candidate instead of
+      // truncating output to force-fit the smaller tier.
       max_tokens: 6000,
       temperature: 0.3,
       response_format: { type: "json_object" },
