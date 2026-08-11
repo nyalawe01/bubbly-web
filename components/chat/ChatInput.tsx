@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Plus, Mic, Square, Loader2, X,
   Zap, Gem, ImageIcon, FileText, Camera, EyeOff,
-  BrainCircuit, Layers, MonitorPlay, GraduationCap,
+  BrainCircuit, Layers, MonitorPlay, GraduationCap, Upload,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { AnimatedSendIcon } from "@/components/ui/icons";
@@ -225,6 +225,13 @@ export function ChatInput({
                 >
                   <AttachmentThumb file={f} />
 
+                  {f.indexing && (
+                    <div className="absolute inset-0 bg-black/40 rounded-[14px] flex items-center justify-center gap-1 backdrop-blur-[1px]">
+                      <Loader2 size={12} className="animate-spin text-white" />
+                      <span className="text-[8px] text-white font-medium">Indexing…</span>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={(e) => {
@@ -237,6 +244,46 @@ export function ChatInput({
                   >
                     <X size={10} strokeWidth={2.5} />
                   </button>
+
+                  {f.promoted ? (
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-emerald-500/90 text-white rounded-full px-1.5 py-0.25 text-[7px] font-medium backdrop-blur">
+                      Saved to Vault
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!f.processedContent || f.indexing) return;
+                        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+                        try {
+                          const res = await fetch("/api/chat/attachments/promote", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              file_name: f.name,
+                              file_type: f.type,
+                              content: f.processedContent,
+                              file_size: f.size,
+                            }),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false, promoted: true } : x)));
+                          } else {
+                            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+                          }
+                        } catch {
+                          setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+                        }
+                      }}
+                      disabled={!f.processedContent || !!f.indexing}
+                      className="icon-motion absolute bottom-1 left-1/2 -translate-x-1/2 bg-[var(--accent)] hover:bg-[var(--accent)]/80 disabled:opacity-40 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                      title="Save to Vault"
+                    >
+                      <Upload size={10} strokeWidth={2.5} />
+                    </button>
+                  )}
                 </div>
               );
             })}

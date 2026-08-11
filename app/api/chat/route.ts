@@ -10,7 +10,7 @@ import { matchCache, writeCache } from "@/lib/ai/cache";
 
 export async function POST(request: Request) {
   try {
-    const { message, history, modelType, files, generateDiagram, generateImage, mode, incognito, responseLanguage } = await request.json();
+    const { message, history, modelType, files, attachment_context, generateDiagram, generateImage, mode, incognito, responseLanguage } = await request.json();
 
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
@@ -24,6 +24,22 @@ export async function POST(request: Request) {
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // ---- Quota guardrail (Phase 1.5) ----
+    // Per-user daily cap so a runaway session can't rack up unbounded costs.
+    // Logged reads are async/fire-and-forget — never block the user.
+    const { count: todaysMessages } = await supabase
+      .from("usage_events")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("feature_name", "chat_message")
+      .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+    if ((todaysMessages ?? 0) >= 50) {
+      return NextResponse.json(
+        { error: "Daily study limit reached. Your limit resets tomorrow." },
+        { status: 429 }
+      );
     }
 
     const ai = new GoogleGenAI({ apiKey: googleKey });
@@ -105,6 +121,30 @@ export async function POST(request: Request) {
     // falls comfortably over Gemini's prompt-caching minimum.
     let systemAddenda = formatVaultContextBlock(vaultChunks);
 
+    // ---- Chat-attachment context (Phase 1 P0) ----
+    // Files attached inline to THIS message are processed by /api/chat/attachments/process
+    // (which runs the same extraction as the Vault). The frontend sends the already-
+    // extracted content here; we surface it as a labeled context block so the model
+    // genuinely reads the attachment, and list it in Sources for transparency.
+    let attachmentContext = "";
+    let attachmentSources: any[] = [];
+    if (Array.isArray(attachment_context) && attachment_context.length > 0) {
+      attachmentContext = "\n\n[SOURCE: THIS MESSAGE'S ATTACHMENT(S)]\nThe student attached the following files to this message. Read their content to answer — do not summarize the file list as your answer.\n" +
+        (attachment_context as any[])
+          .map((f) => {
+            const name = f?.file_name || f?.name || "attachment";
+            const body = (f?.content || "").slice(0, 16000);
+            return `<ATTACHED FILE: ${name}> type=${f?.file_type || "unknown"}\n${body}\n</ATTACHED FILE>`;
+          })
+          .join("\n\n");
+      attachmentSources = attachment_context.map((f: any) => ({
+        type: "attachment",
+        title: f?.file_name || f?.name || "Attachment",
+        snippet: (f?.content || "").slice(0, 150),
+      }));
+      systemAddenda += attachmentContext;
+    }
+
     // Real sources shown to the student at the end of the reply — one entry per
     // distinct Vault file actually retrieved (deduped, same convention as
     // formatVaultContextBlock) plus every web result actually used. Sent to the
@@ -146,7 +186,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const combinedSources = [...fileSources, ...webSources];
+    const combinedSources = [...fileSources, ...attachmentSources, ...webSources];
 
     if (route.needsDiagram) {
       systemAddenda += diagramAddendum();
@@ -186,11 +226,8 @@ export async function POST(request: Request) {
         })()
       : Promise.resolve(null);
 
-    if (files && files.length > 0) {
-      systemAddenda += `\n\nThe student has attached these files this turn: ${files
-        .map((f: any) => f.name)
-        .join(', ')}`;
-    }
+    // Attachment NAMES are already surfaced via attachment_context above with the
+    // file content; the legacy `files` names-only list is no longer needed for grounding.
 
     const formattedHistory =
       history?.map((msg: any) => ({
@@ -198,6 +235,8 @@ export async function POST(request: Request) {
         content: msg.text,
       })) || [];
     formattedHistory.push({ role: "user", content: message });
+
+    const chatModel = chatModelFor(resolvedModelType);
 
     // Single plain-string system message for every tier. The old code split the
     // system prompt into a content-array with an Anthropic-style cache_control
@@ -214,7 +253,7 @@ export async function POST(request: Request) {
     // ChatGPT. (See lib/ai/models.ts.) callModel() fails over on a rejected
     // create() call — that happens before any stream bytes are consumed, so this
     // is safe for the streaming case too, never a mid-stream provider switch.
-    const completionStream: any = await callModel(chatModelFor(resolvedModelType), {
+    const completionStream: any = await callModel(chatModel, {
       messages: [
         systemMessage as any,
         ...formattedHistory,
@@ -319,6 +358,22 @@ export async function POST(request: Request) {
         }
       },
     });
+
+    // Log the usage event (fire-and-forget) so quotas/usage tracking updates without
+    // delaying the streamed response. tokens approximated from the prompt length.
+    supabase.from("usage_events").insert({
+      user_id: user.id,
+      feature_name: "chat_message",
+      model_used: chatModel?.[0]?.model || "unknown",
+      provider: chatModel?.[0]?.provider || "unknown",
+      tokens_used: Math.ceil((message + systemAddenda).length / 4),
+      estimated_cost: Math.ceil((message + systemAddenda).length / 1000) * 0.0004,
+      metadata: {
+        incognito: !!incognito,
+        has_web_search: !!route.needsWebSearch,
+        has_attachment: Array.isArray(attachment_context) && attachment_context.length > 0,
+      },
+    }).then(() => {}, () => {});
 
     return new Response(stream, {
       headers: {

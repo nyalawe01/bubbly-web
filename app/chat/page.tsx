@@ -619,32 +619,91 @@ export default function Workspace() {
         : m
     );
 
+  // Index any newly-attached files through the shared ingestion pipeline so the AI
+  // can actually read them (Phase 1 P0). Runs reactively on attach; reused for the
+  // "immediately indexing" thumbnail state in ChatInput. Pasted-as-text skips the
+  // network round-trip (its content is already in hand).
+  useEffect(() => {
+    const toIndex = attachedFiles.filter(
+      (f) => f?.processedContent == null && !f?.indexing && (f.raw || f instanceof File)
+    );
+    if (!toIndex.length) return;
+
+    toIndex.forEach(async (f) => {
+      // Pasted-as-attachment already carries its text — no need to re-OCR it.
+      if (typeof f?.pastedText === "string" && f.pastedText.length > 0) {
+        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, processedContent: f.pastedText } : x)));
+        return;
+      }
+
+      setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+      try {
+        const form = new FormData();
+        form.append("file", f.raw || f);
+        const res = await fetch("/api/chat/attachments/process", { method: "POST", body: form });
+        const data = await res.json();
+        setAttachedFiles((prev) =>
+          prev.map((x) =>
+            x === f
+              ? {
+                  ...x,
+                  indexing: false,
+                  processedContent: data.content || undefined,
+                  processedError: data.error ? String(data.error) : undefined,
+                }
+              : x
+          )
+        );
+      } catch {
+        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false, processedError: "indexing failed" } : x)));
+      }
+    });
+  }, [attachedFiles]);
+
   const handleSendMessage = async (e?: React.FormEvent, historicalPrompt?: string, historyOverride?: any[]) => {
     e?.preventDefault();
     const activeText = historicalPrompt || inputText;
     if ((!activeText.trim() && attachedFiles.length === 0) || isGenerating) return;
 
-    let payloadString = activeText.trim();
     const currentFiles = [...attachedFiles];
-    if (currentFiles.length > 0) {
-      // The server still needs the file list (and any pasted-as-attachment text so
-      // the AI can actually read it), but the BUBBLE no longer shows this raw prefix —
-      // it renders the attachment pills above the bare prompt instead (see below).
-      payloadString = `[Attached Files: ${currentFiles.map(f => f.name).join(", ")}]`;
-      for (const f of currentFiles) {
-        const pasted = f?.pastedText;
-        if (typeof pasted === "string" && pasted.length > 0) {
-          payloadString += `\n\n<uploaded text "${f.name}">\n${pasted.slice(0, 12000)}\n</uploaded text>`;
+    // Assemble the already-extracted content the AI will ground on. Any file still
+    // indexing gets indexed inline right now so a fast Send never drops content.
+    const attachment_context: any[] = [];
+    for (const f of currentFiles) {
+      if (f.processedContent != null && typeof f.processedContent === "string" && f.processedContent.length > 0) {
+        attachment_context.push({ file_name: f.name, file_type: f.type, content: f.processedContent });
+      } else {
+        // Inline fallback: index synchronously before sending.
+        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+        try {
+          const form = new FormData();
+          form.append("file", f.raw || f);
+          const res = await fetch("/api/chat/attachments/process", { method: "POST", body: form });
+          const data = await res.json();
+          if (data.content) {
+            attachment_context.push({ file_name: f.name, file_type: f.type, content: data.content });
+            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, processedContent: data.content, indexing: false } : x)));
+          } else {
+            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+          }
+        } catch {
+          setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
         }
       }
-      payloadString += `\n\n${activeText.trim()}`;
     }
 
     // historyOverride lets callers (edit, regenerate) hand us the EXACT prior
     // history to build on — using the `messages` state closure directly here would
     // be stale the instant a caller has just called setMessages() itself.
     const baseMessages = historyOverride ?? messages;
-    const incomingMessages = [...baseMessages, { role: "user", text: activeText.trim(), files: currentFiles.length > 0 ? currentFiles : undefined }];
+    const incomingMessages = [
+      ...baseMessages,
+      {
+        role: "user",
+        text: activeText.trim(),
+        files: currentFiles.length > 0 ? currentFiles : undefined,
+      },
+    ];
     setMessages(incomingMessages);
     if (!historicalPrompt) setInputText("");
     setAttachedFiles([]);
@@ -720,14 +779,15 @@ export default function Workspace() {
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: payloadString,
+          message: activeText.trim(),
           history: baseMessages,
           modelType: selectedModel,
           files: currentFiles,
+          attachment_context,
           generateImage: wantsImage,
           generateDiagram: needsDiagram,
           incognito: isIncognito,
-          context: { documents: vaultDocuments.map(d => d.name), files: currentFiles.map(f => f.name) }
+          context: { documents: vaultDocuments.map(d => d.name), files: currentFiles.map(f => f.name) },
         }),
       });
       if (!response.ok) throw new Error("Connection dropped.");
