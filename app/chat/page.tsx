@@ -632,11 +632,11 @@ export default function Workspace() {
     toIndex.forEach(async (f) => {
       // Pasted-as-attachment already carries its text — no need to re-OCR it.
       if (typeof f?.pastedText === "string" && f.pastedText.length > 0) {
-        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, processedContent: f.pastedText } : x)));
+        setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, processedContent: f.pastedText } : x)));
         return;
       }
 
-      setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+      setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: true } : x)));
       try {
         const form = new FormData();
         form.append("file", f.raw || f);
@@ -644,7 +644,7 @@ export default function Workspace() {
         const data = await res.json();
         setAttachedFiles((prev) =>
           prev.map((x) =>
-            x === f
+            x.id === f.id
               ? {
                   ...x,
                   indexing: false,
@@ -655,7 +655,7 @@ export default function Workspace() {
           )
         );
       } catch {
-        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false, processedError: "indexing failed" } : x)));
+        setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false, processedError: "indexing failed" } : x)));
       }
     });
   }, [attachedFiles]);
@@ -674,7 +674,7 @@ export default function Workspace() {
         attachment_context.push({ file_name: f.name, file_type: f.type, content: f.processedContent });
       } else {
         // Inline fallback: index synchronously before sending.
-        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+        setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: true } : x)));
         try {
           const form = new FormData();
           form.append("file", f.raw || f);
@@ -682,12 +682,12 @@ export default function Workspace() {
           const data = await res.json();
           if (data.content) {
             attachment_context.push({ file_name: f.name, file_type: f.type, content: data.content });
-            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, processedContent: data.content, indexing: false } : x)));
+            setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, processedContent: data.content, indexing: false } : x)));
           } else {
-            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+            setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false } : x)));
           }
         } catch {
-          setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+          setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false } : x)));
         }
       }
     }
@@ -1101,7 +1101,19 @@ export default function Workspace() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    const newFiles = Array.from(files);
+    // Wrap each File the same shape the paste path uses: a plain object carrying
+    // name/type/size as OWN enumerable props plus the raw File under `.raw`.
+    // This matters because the later `{...x, indexing:true}` spreads clone the
+    // entry, and a bare File's name/type/size are NON-ENUMERABLE prototype
+    // getters — so a spread would silently drop them and the source would lose
+    // its filename. Own enumerable props survive the clone.
+    const newFiles = Array.from(files).map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      raw: file,
+    }));
     setAttachedFiles(prev => [...prev, ...newFiles]);
     e.target.value = '';
   };

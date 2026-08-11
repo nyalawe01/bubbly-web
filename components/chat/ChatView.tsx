@@ -184,18 +184,18 @@ export function ChatView(props: ChatViewProps) {
         ) : (
           <div className="max-w-4xl mx-auto space-y-6 md:space-y-10">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                {msg.role === "user" ? (
-                  <UserMessage
-                    message={msg}
-                    onFileClick={onFileClick}
-                    onEdit={(newText) => onEditMessage(i, newText)}
-                    colors={colors}
-                  />
-                ) : (
-                  <AIMessage
-                    message={msg}
-                    isGenerating={isGenerating}
+               <div key={i} data-testid={msg.role === "user" ? "user-message" : "ai-message"} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                 {msg.role === "user" ? (
+                   <UserMessage
+                     message={msg}
+                     onFileClick={onFileClick}
+                     onEdit={(newText) => onEditMessage(i, newText)}
+                     colors={colors}
+                   />
+                 ) : (
+                   <AIMessage
+                     message={msg}
+                     isGenerating={isGenerating}
                     onRegenerate={onRegenerate}
                     onShare={onShare}
                     onOpenSourceViewer={onOpenSourceViewer}

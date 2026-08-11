@@ -255,7 +255,7 @@ export function ChatInput({
                       onClick={async (e) => {
                         e.stopPropagation();
                         if (!f.processedContent || f.indexing) return;
-                        setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: true } : x)));
+                        setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: true } : x)));
                         try {
                           const res = await fetch("/api/chat/attachments/promote", {
                             method: "POST",
@@ -269,12 +269,12 @@ export function ChatInput({
                           });
                           const data = await res.json();
                           if (data.success) {
-                            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false, promoted: true } : x)));
+                            setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false, promoted: true } : x)));
                           } else {
-                            setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+                            setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false } : x)));
                           }
                         } catch {
-                          setAttachedFiles((prev) => prev.map((x) => (x === f ? { ...x, indexing: false } : x)));
+                          setAttachedFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, indexing: false } : x)));
                         }
                       }}
                       disabled={!f.processedContent || !!f.indexing}
