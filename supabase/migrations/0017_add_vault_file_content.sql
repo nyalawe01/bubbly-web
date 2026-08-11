@@ -1,0 +1,12 @@
+-- 0017_add_vault_file_content.sql
+--
+-- Adds the file_content column to vault_documents. The column is defined in
+-- 0001_bubbly_foundation.sql's `create table if not exists`, but that table
+-- predates the migration set (it was created originally before 0001 shipped), so
+-- the `if not exists` is a no-op on the live database and the column never got
+-- added there. Without it:
+--   - app/vault/page.tsx selects file_content by name -> Supabase REST returns 400
+--   - app/api/upload/route.ts inserts file_content -> the insert fails -> 500
+--
+-- `add column if not exists` makes this safe to re-run (no-op once applied).
+alter table vault_documents add column if not exists file_content text;
