@@ -15,6 +15,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { generateAsset } from "@/lib/ai/generate";
 import { checkCache, writeCache, type CacheScope } from "@/lib/ai/cache";
+import { ArtifactService } from "@/lib/artifacts/service";
 
 export const maxDuration = 120;
 
@@ -40,12 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "assetId and type are required" }, { status: 400 });
   }
 
-  const markReady = (title: string, content: any) =>
-    supabase
-      .from("notebook_assets")
-      .update({ status: "ready", title, content, updated_at: new Date().toISOString() })
-      .eq("id", assetId)
-      .eq("user_id", user.id);
+  const service = new ArtifactService(supabase);
 
   try {
     const sources: string[] = config?.sources || [];
@@ -58,25 +54,21 @@ export async function POST(request: Request) {
       const { hit, payload, embedding } = await checkCache(ai, supabase, type as CacheScope, keyText);
 
       if (hit && payload) {
-        await markReady(payload.title, payload.content);
+        await service.markReady(assetId, payload.title, payload.content);
         return NextResponse.json({ success: true, title: payload.title, cached: true });
       }
 
       const result = await generateAsset(type, supabase, user.id, config || {});
-      await markReady(result.title, result.content);
+      await service.markReady(assetId, result.title, result.content);
       writeCache(supabase, type as CacheScope, keyText, embedding, { title: result.title, content: result.content });
       return NextResponse.json({ success: true, title: result.title });
     }
 
     const result = await generateAsset(type, supabase, user.id, config || {});
-    await markReady(result.title, result.content);
+    await service.markReady(assetId, result.title, result.content);
     return NextResponse.json({ success: true, title: result.title });
   } catch (error: any) {
-    await supabase
-      .from("notebook_assets")
-      .update({ status: "failed", error: error.message || "Generation failed", updated_at: new Date().toISOString() })
-      .eq("id", assetId)
-      .eq("user_id", user.id);
+    await service.markFailed(assetId, error.message || "Generation failed");
     return NextResponse.json({ error: error.message || "Generation failed", success: false }, { status: 500 });
   }
 }

@@ -1,9 +1,12 @@
 // app/api/summary/route.ts
+//
+// Refactored (Phase 2, Week 3-4) to write through the unified ArtifactService
+// (notebook_assets). Previously duplicated generation logic and wrote straight
+// to the legacy summary_history table.
 import { NextResponse } from "next/server";
-import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchSourceContent } from "@/lib/ai/vault";
-import { SUMMARY_CONTRACT, GENERATED_CONTEXT_RULES } from "@/lib/ai/prompts";
+import { generateSummaryContent } from "@/lib/ai/generate";
+import { ArtifactService } from "@/lib/artifacts/service";
 
 export async function POST(request: Request) {
   try {
@@ -11,60 +14,45 @@ export async function POST(request: Request) {
 
     const googleKey = process.env.GEMINI_API_KEY;
     if (!googleKey) {
-      return NextResponse.json({ error: 'API key missing' }, { status: 500 });
+      return NextResponse.json({ error: "API key missing" }, { status: 500 });
     }
 
     const { supabase, getUser } = await createSupabaseServerClient(request);
     const user = await getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sourceContent = sources?.length ? await fetchSourceContent(supabase, sources, user.id, 50) : '';
-
-    const systemPrompt = `${SUMMARY_CONTRACT}
-
-${GENERATED_CONTEXT_RULES}`;
-
-    let userPrompt = `Summarize the topic: ${topic || 'general knowledge'}. Length: ${length === 'detailed' ? 'detailed' : 'brief'}.`;
-
-    if (sourceContent) {
-      userPrompt += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
-    }
-
-    const response = await callModel(MODELS.generator, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_tokens: 3000,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    });
-
-    const summary = JSON.parse(response.choices[0]?.message?.content || '{}');
-
-    await supabase.from('summary_history').insert({
-      user_id: user.id,
+    const service = new ArtifactService(supabase);
+    const result = await generateSummaryContent(supabase, user.id, {
       topic,
-      summary: JSON.stringify(summary),
       sources,
-      created_at: new Date().toISOString(),
+      length,
+    });
+    const artifact = await service.create({
+      ownerId: user.id,
+      type: "summary",
+      title: result.title,
+      content: result.content,
+      sourceDocumentIds: sources || [],
+      metadata: {
+        topic: topic || null,
+        length: length === "detailed" ? "detailed" : "brief",
+        label: result.metadataLabel,
+      },
     });
 
     return NextResponse.json({
       success: true,
-      summary,
-      metadata: {
-        topic: topic
-      }
+      artifact,
+      summary: result.content,
+      metadata: { topic },
     });
-
   } catch (error: any) {
-    console.error('Summary Generation Error:', error);
-    return NextResponse.json({
-      error: error.message || 'Failed to generate summary',
-      success: false
-    }, { status: 500 });
+    console.error("Summary Generation Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to generate summary", success: false },
+      { status: 500 }
+    );
   }
 }

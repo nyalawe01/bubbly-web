@@ -15,6 +15,7 @@ interface VaultFile {
   size: string;
   type?: string;
   status: "ready" | "processing" | "failed";
+  previewStatus: "ready" | "pending" | "unavailable" | "broken";
   date: string;
   summary?: string;
   content?: string;
@@ -47,7 +48,7 @@ export default function VaultScreen() {
 
     const { data, error } = await supabase
       .from("vault_documents")
-      .select("id, file_name, file_size, file_type, ai_summary, file_content, created_at")
+      .select("id, file_name, file_size, file_type, ai_summary, file_content, preview_status, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -59,6 +60,7 @@ export default function VaultScreen() {
           size: d.file_size,
           type: d.file_type,
           status: "ready" as const,
+          previewStatus: d.preview_status || "pending",
           date: new Date(d.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
           summary: d.ai_summary,
           content: d.file_content || undefined,
@@ -67,6 +69,51 @@ export default function VaultScreen() {
     }
     setLoading(false);
   }, [supabase]);
+
+  // Touch last_accessed when a document is opened, so the backfill script heals
+  // the documents the student actually looks at first.
+  const touchAccessed = useCallback(
+    async (id: string) => {
+      supabase
+        .from("vault_documents")
+        .update({ last_accessed: new Date().toISOString() })
+        .eq("id", id)
+        .then(() => {}, () => {});
+    },
+    [supabase]
+  );
+
+  // Repair a single document's preview: reconstruct its text from the stored
+  // embedding chunks (the same fallback the preview modal already uses) and mark
+  // it ready. Documents whose original file is still in storage could be
+  // re-extracted through the ingestion pipeline, but that runs server-side in
+  // Next.js, so the UI path reconstructs from chunks — faithful enough to restore
+  // a usable preview without a round-trip to vision OCR.
+  const repairPreview = useCallback(
+    async (file: VaultFile) => {
+      setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, previewStatus: "pending" } : f)));
+      const { data: chunks } = await supabase
+        .from("vault_embeddings")
+        .select("content")
+        .eq("document_id", file.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      const text = (chunks || []).map((c: any) => c.content || "").join("\n\n").trim();
+
+      if (text) {
+        await supabase
+          .from("vault_documents")
+          .update({ file_content: text, preview_status: "ready" })
+          .eq("id", file.id);
+        setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, content: text, previewStatus: "ready" } : f)));
+      } else {
+        await supabase.from("vault_documents").update({ preview_status: "unavailable" }).eq("id", file.id);
+        setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, previewStatus: "unavailable" } : f)));
+      }
+    },
+    [supabase]
+  );
 
   useEffect(() => {
     loadFiles();
@@ -80,7 +127,9 @@ export default function VaultScreen() {
   useEffect(() => {
     if (!selectedFile || selectedFile.contentLoading) return;
 
-    if (!selectedFile.content) {
+    // Only auto-hydrate chunk content for docs that are expected to have it.
+    // Pending/unavailable/broken docs show their own fallback UI instead.
+    if (!selectedFile.content && selectedFile.previewStatus === "ready") {
       setSelectedFile((prev) => (prev ? { ...prev, contentLoading: true } : prev));
       supabase
         .from("vault_embeddings")
@@ -111,7 +160,7 @@ export default function VaultScreen() {
   const uploadFile = async (file: File) => {
     const tempId = `temp-${Date.now()}-${file.name}`;
     setFiles((prev) => [
-      { id: tempId, name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, type: file.type, status: "processing", date: "Now" },
+      { id: tempId, name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, type: file.type, status: "processing", previewStatus: "pending", date: "Now" },
       ...prev,
     ]);
 
@@ -286,7 +335,7 @@ export default function VaultScreen() {
               {filteredFiles.map((file) => (
                 <div
                   key={file.id}
-                  onClick={() => file.status === "ready" && setSelectedFile(file)}
+                  onClick={() => { if (file.status === "ready") { touchAccessed(file.id); setSelectedFile(file); } }}
                   className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 hover:-translate-y-0.5 transition-all group cursor-pointer relative overflow-hidden"
                 >
                   <div className="absolute top-4 right-4">
@@ -304,14 +353,28 @@ export default function VaultScreen() {
                   <h3 className="font-medium text-sm mb-1 truncate pr-8">{file.name}</h3>
                   {file.summary && <p className="text-xs text-zinc-500 line-clamp-2 mb-3">{file.summary}</p>}
 
-                  <div className="flex items-center justify-between mt-4 text-xs">
-                    <span className="text-zinc-500">{file.size} • {file.date}</span>
-                    <span className={`font-medium ${
-                      file.status === "ready" ? "text-zinc-400" :
-                      file.status === "processing" ? "text-[var(--accent)]" :
-                      "text-[var(--danger)]"
-                    }`}>
-                      {file.status === "ready" ? "Indexed" : file.status === "processing" ? "Chunking..." : "Failed"}
+                  <div className="flex items-center justify-between mt-4 text-xs gap-2">
+                    <span className="text-zinc-500 truncate">{file.size} • {file.date}</span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {file.previewStatus !== "ready" && (
+                        <button
+                          type="button"
+                          title="Repair preview"
+                          onClick={(e) => { e.stopPropagation(); repairPreview(file); }}
+                          className="p-1 rounded-md text-zinc-500 hover:text-[var(--accent)] hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Sparkles size={12} />
+                        </button>
+                      )}
+                      <span className={`font-medium ${
+                        file.previewStatus === "ready" ? "text-zinc-400" :
+                        file.previewStatus === "pending" ? "text-[var(--accent)]" :
+                        "text-[var(--danger)]"
+                      }`}>
+                        {file.previewStatus === "ready" ? "Indexed" :
+                         file.previewStatus === "pending" ? "Generating…" :
+                         file.previewStatus === "broken" ? "Preview broken" : "Unavailable"}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -339,24 +402,53 @@ export default function VaultScreen() {
               <IconButton icon={X} label="Close" onClick={() => setSelectedFile(null)} />
             </div>
 
-            <div className="flex-1 overflow-y-auto hide-scrollbar p-4 md:p-6">
-              {selectedFile.imageUrl ? (
-                // Actual image content for raster uploads
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedFile.imageUrl}
-                  alt={selectedFile.name}
-                  className="max-w-full max-h-[60vh] object-contain rounded-xl mx-auto bg-black/20"
-                />
-              ) : selectedFile.contentLoading ? (
-                <div className="flex items-center justify-center py-16 text-zinc-500 gap-2 text-sm">
-                  <Loader2 size={18} className="animate-spin" /> Loading document content…
-                </div>
-              ) : (
-                <pre className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed font-sans text-zinc-300 text-[var(--text-primary)]">
-                  {selectedFile.content || "No content available."}
-                </pre>
-              )}
+             <div className="flex-1 overflow-y-auto hide-scrollbar p-4 md:p-6">
+               {selectedFile.imageUrl ? (
+                 // Actual image content for raster uploads
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img
+                   src={selectedFile.imageUrl}
+                   alt={selectedFile.name}
+                   className="max-w-full max-h-[60vh] object-contain rounded-xl mx-auto bg-black/20"
+                 />
+               ) : selectedFile.previewStatus === "pending" ? (
+                 // Preview still being generated (original awaiting re-extraction).
+                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-zinc-400">
+                   <Loader2 size={22} className="animate-spin" />
+                   <p className="text-sm">Generating preview…</p>
+                   <p className="text-xs text-zinc-600 max-w-xs text-center">
+                     This document is being indexed. Check back shortly.
+                   </p>
+                 </div>
+               ) : (selectedFile.previewStatus === "unavailable" || selectedFile.previewStatus === "broken") ? (
+                 // Original file gone (unavailable) or preview corrupted (broken).
+                 <div className="flex flex-col items-center justify-center py-12 gap-4">
+                   <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
+                     <AlertCircle size={26} className="text-zinc-500" />
+                   </div>
+                   <p className="text-sm text-zinc-300">
+                     {selectedFile.previewStatus === "broken" ? "Preview broken." : "Preview unavailable."}
+                   </p>
+                   <p className="text-xs text-zinc-600 max-w-xs text-center">
+                     The original file is missing, but you can still chat with this document.
+                   </p>
+                   <button
+                     type="button"
+                     onClick={() => repairPreview(selectedFile)}
+                     className="mt-1 px-4 py-2 rounded-xl text-sm bg-white/10 hover:bg-white/15 text-zinc-200 flex items-center gap-2"
+                   >
+                     <Sparkles size={14} /> Regenerate from Chunks
+                   </button>
+                 </div>
+               ) : selectedFile.contentLoading ? (
+                 <div className="flex items-center justify-center py-16 text-zinc-500 gap-2 text-sm">
+                   <Loader2 size={18} className="animate-spin" /> Loading document content…
+                 </div>
+               ) : (
+                 <pre className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed font-sans text-zinc-300 text-[var(--text-primary)]">
+                   {selectedFile.content || "No content available."}
+                 </pre>
+               )}
 
               {selectedFile.summary && (
                 <div className="mt-5 flex items-start gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl p-3 md:p-4">

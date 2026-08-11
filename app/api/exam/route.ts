@@ -1,9 +1,12 @@
 // app/api/exam/route.ts
+//
+// Refactored (Phase 2, Week 3-4) to write through the unified ArtifactService
+// (notebook_assets). Previously duplicated generation logic and wrote straight
+// to the legacy exam_history table.
 import { NextResponse } from "next/server";
-import { callModel, MODELS } from "@/lib/ai/models";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchSourceContent } from "@/lib/ai/vault";
-import { GLOBAL_STYLE, GENERATED_CONTEXT_RULES, EXAM_CONTRACT } from "@/lib/ai/prompts";
+import { generateExamContent } from "@/lib/ai/generate";
+import { ArtifactService } from "@/lib/artifacts/service";
 
 export async function POST(request: Request) {
   try {
@@ -22,97 +25,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const documentContext = await fetchSourceContent(supabase, sourceIds, user.id, 50);
-    if (!documentContext) throw new Error("Failed to retrieve document context from the vault.");
-
-    let userPrompt = `CONTEXT:\n${documentContext}\n\n`;
-
-    if (examType === "guide") {
-      const systemPrompt = `${GLOBAL_STYLE}
-
-${GENERATED_CONTEXT_RULES}
-
-You're turning the student's own notes into a structured study guide.
-
-Format the guide with:
-- Main topics as ## headings
-- Subtopics as ### headings
-- Key definitions in **bold**
-- Bullet points for lists
-- Numbered steps for processes
-- Tables for comparisons when relevant
-- Keep each section concise but comprehensive
-- Include practice questions at the end
-- Include relevant diagrams using Mermaid syntax where appropriate
-
-The guide should turn messy notes into a structured, easy-to-study outline.`;
-
-      userPrompt += "Generate a comprehensive, well-structured study guide based on the context above.";
-
-      const response = await callModel(MODELS.generator, {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 4000,
-        temperature: 0.3,
-      });
-
-      const guideContent = response.choices[0].message.content || "";
-
-      await supabase.from('exam_history').insert({
-        user_id: user.id,
-        title: 'Study Guide',
-        exam_type: 'guide',
-        content: { text: guideContent },
-        sources: sourceIds,
-        created_at: new Date().toISOString(),
-      });
-
-      return NextResponse.json({
-        success: true,
-        examType: "guide",
-        exam: { title: "Study Guide", content: guideContent },
-        metadata: { examType: "guide", sourceIds },
-      });
-    } else if (examType === "exam") {
-      const systemPrompt = `${EXAM_CONTRACT}
-
-${GENERATED_CONTEXT_RULES}`;
-
-      userPrompt += `Generate a practice exam worth ${config?.count ? config.count * 2 : 20} total marks, difficulty level: ${config?.difficulty || 'medium'}.`;
-
-      const response = await callModel(MODELS.generator, {
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 4000,
-        temperature: 0.3,
-      });
-
-      const parsedExam = JSON.parse(response.choices[0].message.content || "{}");
-
-      await supabase.from('exam_history').insert({
-        user_id: user.id,
-        title: parsedExam.title || 'Practice Exam',
-        exam_type: 'exam',
-        content: parsedExam,
-        sources: sourceIds,
-        created_at: new Date().toISOString(),
-      });
-
-      return NextResponse.json({
-        success: true,
-        examType: "exam",
-        exam: parsedExam,
-        metadata: { examType: "exam", difficulty: config?.difficulty || 'medium', sourceIds },
-      });
+    if (examType !== "guide" && examType !== "exam") {
+      return NextResponse.json({ error: "examType must be 'guide' or 'exam'." }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "examType must be 'guide' or 'exam'." }, { status: 400 });
+    const service = new ArtifactService(supabase);
+    const result = await generateExamContent(supabase, user.id, {
+      sources: sourceIds,
+      examType,
+      config,
+    });
+    const artifactType = examType === "guide" ? "study_guide" : "exam_prep";
+    const artifact = await service.create({
+      ownerId: user.id,
+      type: artifactType,
+      title: result.title,
+      content: result.content,
+      sourceDocumentIds: sourceIds,
+      metadata: {
+        examType,
+        difficulty: config?.difficulty || "medium",
+        label: result.metadataLabel,
+      },
+    });
 
+    return NextResponse.json({
+      success: true,
+      artifact,
+      examType,
+      content: result.content,
+      metadata: { examType, difficulty: config?.difficulty || "medium", sourceIds },
+    });
   } catch (error: any) {
     console.error("Exam Generation Error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate exam." }, { status: 500 });

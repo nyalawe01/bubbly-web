@@ -48,11 +48,33 @@ export async function POST(request: Request) {
         // without reconstructing it from embedding chunks. Older documents predating
         // this column got it on their row, so the vault page falls back to the chunks.
         file_content: textContent,
+        preview_status: "ready",
       })
       .select()
       .single();
 
     if (docError) throw new Error(`Database Error: ${docError.message}`);
+
+    // Persist the original file bytes so a broken preview can be re-extracted
+    // later through the ingestion pipeline (Phase 2 backfill). Path is scoped to
+    // the owner for RLS: ${userId}/${documentId}/${filename}.
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storagePath = `${user.id}/${docData.id}/${safeName}`;
+    const { error: storageError } = await supabase.storage
+      .from("vault-originals")
+      .upload(storagePath, await file.arrayBuffer(), {
+        contentType: file.type || "application/octet-stream",
+        upsert: true,
+      });
+    if (!storageError) {
+      await supabase
+        .from("vault_documents")
+        .update({ storage_path: storagePath })
+        .eq("id", docData.id);
+    }
+    // A storage failure is non-fatal: the extracted text + embeddings already make
+    // the document usable. The backfill script handles content; only full-fidelity
+    // re-extraction needs the original bytes.
 
     if (pendingImages.length) {
       const openaiForCaptions = new OpenAI({
