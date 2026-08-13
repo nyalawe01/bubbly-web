@@ -63,7 +63,6 @@ export default function AuthScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         router.push("/chat");
-        router.refresh();
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -75,7 +74,6 @@ export default function AuthScreen() {
         });
         if (error) throw error;
         router.push("/chat");
-        router.refresh();
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");

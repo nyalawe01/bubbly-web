@@ -160,6 +160,7 @@ export async function POST(request: Request) {
       .map((c: any) => ({ type: "file", title: c.file_name || "Untitled", snippet: (c.content || "").slice(0, 150) }));
 
     let webSources: any[] = [];
+    let searchFailed = false;
     if (route.needsWebSearch) {
       try {
         const searchResponse = await fetch(
@@ -183,6 +184,7 @@ export async function POST(request: Request) {
         }
       } catch (searchError) {
         console.warn("Web search failed:", searchError);
+        searchFailed = true;
       }
     }
 
@@ -198,6 +200,10 @@ export async function POST(request: Request) {
 
     if (mode === "tutor") {
       systemAddenda += tutorAddendum(typeof responseLanguage === "string" ? responseLanguage : undefined);
+    }
+
+    if (searchFailed) {
+      systemAddenda += `\n[Note: Web search was attempted but failed. Answer from your knowledge and note that current web sources could not be consulted.]`;
     }
 
     // Kick off image generation in parallel with the chat completion below —
@@ -271,6 +277,7 @@ export async function POST(request: Request) {
           let sentLength = 0;
           let diagramData: any = null;
           let questionsData: any = null;
+          let realUsage: any = null;
 
           // Tags the MODEL can emit inline that must be lifted out of the visible
           // text and turned into structured payloads (a diagram to render, or a
@@ -283,7 +290,8 @@ export async function POST(request: Request) {
           };
 
           for await (const chunk of completionStream) {
-            const delta = chunk.choices[0]?.delta?.content || "";
+            if (chunk.usage) realUsage = chunk.usage;
+            const delta = chunk.choices?.[0]?.delta?.content || "";
             if (!delta) continue;
             raw += delta;
 
@@ -353,27 +361,28 @@ export async function POST(request: Request) {
           }
 
           controller.close();
+          
+          supabase.from("usage_events").insert({
+            user_id: user.id,
+            feature_name: "chat_message",
+            model_used: chatModel?.[0]?.model || "unknown",
+            provider: chatModel?.[0]?.provider || "unknown",
+            tokens_used: realUsage?.total_tokens || Math.ceil((message + systemAddenda).length / 4),
+            estimated_cost: realUsage?.total_tokens 
+              ? realUsage.total_tokens * 0.0001 
+              : Math.ceil((message + systemAddenda).length / 1000) * 0.0004,
+            metadata: {
+              incognito: !!incognito,
+              has_web_search: !!route.needsWebSearch,
+              has_attachment: Array.isArray(attachment_context) && attachment_context.length > 0,
+            },
+          }).then(() => {}, () => {});
+
         } catch (err) {
           controller.error(err);
         }
       },
     });
-
-    // Log the usage event (fire-and-forget) so quotas/usage tracking updates without
-    // delaying the streamed response. tokens approximated from the prompt length.
-    supabase.from("usage_events").insert({
-      user_id: user.id,
-      feature_name: "chat_message",
-      model_used: chatModel?.[0]?.model || "unknown",
-      provider: chatModel?.[0]?.provider || "unknown",
-      tokens_used: Math.ceil((message + systemAddenda).length / 4),
-      estimated_cost: Math.ceil((message + systemAddenda).length / 1000) * 0.0004,
-      metadata: {
-        incognito: !!incognito,
-        has_web_search: !!route.needsWebSearch,
-        has_attachment: Array.isArray(attachment_context) && attachment_context.length > 0,
-      },
-    }).then(() => {}, () => {});
 
     return new Response(stream, {
       headers: {

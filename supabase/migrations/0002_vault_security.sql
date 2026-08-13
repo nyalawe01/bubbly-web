@@ -44,7 +44,7 @@ create policy "Owner can manage own quiz history" on quiz_history
 -- must not remain callable, since it's the vector-search path used by chat RAG).
 drop function if exists match_documents(vector, float, int);
 create or replace function match_documents(
-  query_embedding vector(768),
+  query_embedding vector(3072),
   match_threshold float,
   match_count int,
   p_user_id uuid

@@ -45,7 +45,13 @@ export async function classifyIntent(message: string): Promise<RouteDecision> {
       response_format: { type: "json_object" },
     });
 
-    const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
+    const raw = response.choices[0]?.message?.content || "{}";
+    // Strip markdown fences and repair common LLM JSON issues
+    const cleaned = raw
+      .replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
+      .replace(/,\s*([}\]])/g, '$1')  // trailing commas
+      .trim();
+    const parsed = JSON.parse(cleaned || "{}");
     return {
       needsWebSearch: !!parsed.needsWebSearch,
       needsDiagram: !!parsed.needsDiagram,

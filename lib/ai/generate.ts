@@ -26,6 +26,27 @@ export interface GenResult {
   metadataLabel: string;
 }
 
+function validateFlashcards(result: any): void {
+  if (!result?.cards || !Array.isArray(result.cards)) throw new Error('Invalid flashcard response: missing cards array');
+  result.cards = result.cards.filter((c: any) => c?.front && c?.back);
+  if (!result.cards.length) throw new Error('No valid flashcards generated');
+}
+
+function validateSlides(result: any): void {
+  if (!result?.slides && !Array.isArray(result)) throw new Error('Invalid slides response: missing slides array');
+  const slides = result.slides || result;
+  if (!Array.isArray(slides) || !slides.length) throw new Error('No valid slides generated');
+}
+
+function validateSummary(result: any): void {
+  if (!result?.sections && !result?.content && !result?.summary) throw new Error('Invalid summary response: missing content');
+}
+
+function validateExam(result: any): void {
+  if (!result?.questions || !Array.isArray(result.questions)) throw new Error('Invalid exam response: missing questions array');
+  if (!result.questions.length) throw new Error('No exam questions generated');
+}
+
 const DIFFICULTY_MAP: Record<string, string> = {
   easy: "basic and fundamental concepts",
   medium: "intermediate concepts with some complexity",
@@ -33,23 +54,36 @@ const DIFFICULTY_MAP: Record<string, string> = {
 };
 
 async function complete(system: string, user: string, maxTokens: number) {
-  const response = await callModel(MODELS.generator, {
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    max_tokens: maxTokens,
-    temperature: 0.3,
-    response_format: { type: "json_object" },
-  });
-  return JSON.parse(response.choices[0]?.message?.content || "{}");
+  // The model occasionally returns a 200 with whitespace-only (or otherwise
+  // unparseable) content — a transient hiccup, not a prompt-shape bug. Retry once
+  // before surfacing, so a single bad completion doesn't 500 the whole generator.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await callModel(MODELS.generator, {
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+    const content = (response.choices?.[0]?.message?.content ?? "").trim();
+    if (!content) continue;
+    try {
+      const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+      return JSON.parse(cleaned);
+    } catch {
+      // Malformed JSON — retry once rather than failing the whole generation.
+    }
+  }
+  throw new Error("Model returned no usable JSON content");
 }
 
 // ---------------- QUIZ ----------------
 const QUIZ_COUNTS: Record<string, number> = { fewer: 20, standard: 25, more: 35 };
 
-export async function generateQuizContent(supabase: any, userId: string, config: any): Promise<GenResult> {
-  const numQuestions = QUIZ_COUNTS[config.questionCount] ?? QUIZ_COUNTS.standard;
+export async function generateQuizContent(supabase: any, userId: string, config: any, numQuestionsOverride?: number): Promise<GenResult> {
+  const numQuestions = numQuestionsOverride ?? QUIZ_COUNTS[config.questionCount] ?? QUIZ_COUNTS.standard;
   const sourceContent = config.sources?.length ? await fetchSourceContent(supabase, config.sources, userId, 50) : "";
 
   // Diagrams the model may reference — only images actually extracted from these
@@ -71,7 +105,7 @@ export async function generateQuizContent(supabase: any, userId: string, config:
   let user = `Generate a quiz on the topic: ${config.topic || "general knowledge"}.\nExactly ${numQuestions} questions at ${
     config.difficulty || "medium"
   } difficulty.`;
-  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
+  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 16000)}`;
   if (documentImages.length) {
     user += `\n\nDOCUMENT IMAGES (only use these exact URLs for "diagram" questions, and only if a question` +
       ` about the image is genuinely answerable — skip decorative/irrelevant ones):\n` +
@@ -105,8 +139,9 @@ export async function generateFlashcardsContent(supabase: any, userId: string, c
   let user = `Create flashcards for the topic: ${config.topic || "general study"}.\nDifficulty: ${
     config.difficulty || "medium"
   }. Generate ${numCards} cards.`;
-  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
+  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 16000)}`;
   const flashcards = await complete(system, user, 4000);
+  validateFlashcards(flashcards);
   return {
     title: flashcards.title || "Flashcards",
     content: flashcards,
@@ -121,8 +156,9 @@ export async function generateSummaryContent(supabase: any, userId: string, conf
   let user = `Summarize the topic: ${config.topic || "general knowledge"}. Length: ${
     config.length === "detailed" ? "detailed" : "brief"
   }.`;
-  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 8000)}`;
+  if (sourceContent) user += `\n\nCONTEXT:\n${sourceContent.slice(0, 16000)}`;
   const summary = await complete(system, user, 3000);
+  validateSummary(summary);
   return {
     title: summary.title || `Summary: ${config.topic || "Untitled"}`,
     content: summary,
@@ -145,9 +181,10 @@ export async function generateSlidesContent(supabase: any, userId: string, confi
 Language: ${config.language || "English"}
 Style: ${formatNote}
 Target slide count: ${numSlides}
-${sourceContent ? `\nSource material (ground the outline in this, don't invent facts outside it):\n${sourceContent.slice(0, 8000)}` : ""}`;
+${sourceContent ? `\nSource material (ground the outline in this, don't invent facts outside it):\n${sourceContent.slice(0, 16000)}` : ""}`;
 
   const outline = await complete(SLIDE_OUTLINE_PROMPT, outlineUser, 2000);
+  validateSlides(outline);
   const outlineSlides: any[] = outline.slides || [];
   if (outlineSlides.length === 0) throw new Error("Outline generation failed to produce any slides.");
 
@@ -168,7 +205,9 @@ ${sourceContent ? `\nSource material (ground the outline in this, don't invent f
           temperature: 0.3,
           response_format: { type: "json_object" },
         });
-        const rendered = JSON.parse(renderResponse.choices[0]?.message?.content || "{}");
+        const content = renderResponse.choices[0]?.message?.content || "{}";
+        const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        const rendered = JSON.parse(cleaned);
         return {
           id: slide.id,
           title: rendered.title || slide.title,
@@ -221,10 +260,16 @@ comparisons, and a few practice questions at the end. Turn messy notes into a cl
 
   const system = `${EXAM_CONTRACT}\n\n${GENERATED_CONTEXT_RULES}`;
   const count = config.config?.count;
-  const user = `${base}Generate a practice exam worth ${count ? count * 2 : 20} total marks, difficulty level: ${
+  let user = `${base}Generate a practice exam worth ${count ? count * 2 : 20} total marks, difficulty level: ${
     config.config?.difficulty || "medium"
   }.`;
+  
+  if (config?.types?.length) {
+    user += `\nGenerate ONLY the following question types: ${config.types.join(', ')}.`;
+  }
+  
   const exam = await complete(system, user, 4000);
+  validateExam(exam);
   return {
     title: exam.title || "Practice Exam",
     content: exam,

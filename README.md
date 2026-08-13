@@ -2,9 +2,9 @@
 
 **The AI workspace built for the modern student.**
 
-Chat with an AI tutor that generates quizzes, flashcards, slides, and exams from your own notes — free to start, on the web, on mobile, and right inside your browser.
+Chat with an AI tutor that generates quizzes, flashcards, slides, and exams from your own notes — free to start, on the web and on mobile.
 
-Bubbly (internally codenamed *EduOS*) is a full-stack academic intelligence platform: a Next.js web app, an Expo React Native mobile app, and a WXT browser extension, all sharing one Supabase backend, one AI layer, and one design system.
+Bubbly (internally codenamed *EduOS*) is a full-stack academic intelligence platform: a Next.js web app and an Expo React Native mobile app, all sharing one Supabase backend, one AI layer, and one design system.
 
 ---
 
@@ -15,7 +15,7 @@ Bubbly (internally codenamed *EduOS*) is a full-stack academic intelligence plat
 - **The Vault** — a personal document store with AI-generated summaries, used as the retrieval source for grounded, citation-backed answers.
 - **Web search, diagrams, and images** — the router decides per message whether to search the web, draw a diagram (Mermaid), or generate an image, all without you lifting a finger.
 - **Voice-to-voice tutor** — talk it through instead of typing it (mobile + web voice features).
-- **Three surfaces, one brain** — the same chat, Vault, and generators on desktop, in your pocket, and as a side panel in your browser.
+- **Two surfaces, one brain** — the same chat, Vault, and generators on desktop and in your pocket.
 - **30 UI languages** with full RTL support (Arabic, Persian, Hebrew, Urdu) — the AI itself always replies in the language you write in.
 - **Theming** — multiple built-in themes with light/dark modes and four logical font roles, applied before first paint (no flash).
 
@@ -27,9 +27,6 @@ Bubbly (internally codenamed *EduOS*) is a full-stack academic intelligence plat
 | --- | --- | --- |
 | **Web / Command Center** | Next.js 15 (App Router, React 19, Tailwind) | `app/` — main app in this repo |
 | **Mobile / On-the-Go Companion** | Expo React Native (expo-router) | `mobile/` — separate git repo |
-| **Browser / Real-Time Companion** | WXT Chrome side-panel extension | `extension/` — ships its own README |
-
-The browser extension reuses the same backend (`app/api/chat`) with the same Bearer-token auth as mobile — there is no separate API to maintain.
 
 ---
 
@@ -44,7 +41,6 @@ The browser extension reuses the same backend (`app/api/chat`) with the same Bea
 | **Auth** | Supabase Auth (email + Google OAuth) via `@supabase/ssr` |
 | **Monorepo** | npm workspaces (`shared/` shared package) |
 | **Mobile** | Expo SDK 54, React Native, expo-router, Reanimated, Moti |
-| **Extension** | WXT, Chrome MV3 side panel |
 | **Tooling** | ESLint 9 (flat config), TypeScript 5.3 |
 
 ---
@@ -169,7 +165,6 @@ eduos-web/
 │   ├── constants/ theme/ utils/ lib/
 ├── supabase/             # Supabase config + migrations + seed
 ├── mobile/               # Expo React Native app (separate repo, gitignored)
-├── extension/            # WXT browser extension (own README)
 ├── middleware.ts         # Supabase session refresh
 └── next.config.ts        # Next.js config
 ```
@@ -190,8 +185,8 @@ Web and mobile share code through the `@bubbly/shared` workspace package:
             ┌────────────────────────────────────────────────┐
    Browser  │  Next.js (App Router)                          │
    Mobile   │                                                │
- Extension  │  ┌────────────┐   ┌─────────────┐              │
-   ───────► │  │  app/api/* │──►│  lib/ai/    │              │
+   ───────► │  ┌────────────┐   ┌─────────────┐              │
+            │  │  app/api/* │──►│  lib/ai/    │              │
             │  │  routes    │   │  models.ts  │───► Groq ──┐ │
             │  └────────────┘   │  router.ts  │───► OpenR  ├─┤
             │                   │  prompts.ts │───► Gemini │ │

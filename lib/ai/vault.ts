@@ -6,13 +6,13 @@ import { GoogleGenAI } from "@google/genai";
 import { GENERATED_CONTEXT_RULES } from "./prompts";
 
 // The old text-embedding-004 / embedding-001 models 404 on current Gemini keys.
-// gemini-embedding-001 is the live model — but it defaults to 3072 dims, while the
-// vault_embeddings column and match_documents RPC are vector(768), so we force 768.
+// gemini-embedding-001 is the live model; the vault_embeddings column stores its
+// native 3072-dim output.
 const EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"];
-const EMBED_DIM = 768;
+const EMBED_DIM = 3072;
 
 /** Embeds a single string of text, trying fallback models until one works.
- *  Always returns a 768-dim vector to match the vault schema. */
+ *  Always returns a 3072-dim vector to match the vault schema. */
 export async function embedText(ai: GoogleGenAI, text: string): Promise<number[]> {
   for (const model of EMBEDDING_MODELS) {
     try {
@@ -43,13 +43,29 @@ export async function fetchVaultContext(
   opts: { matchCount?: number; matchThreshold?: number } = {}
 ): Promise<VaultChunk[]> {
   if (!queryEmbedding.length) return [];
+  
+  const targetThreshold = opts.matchThreshold ?? 0.55;
+  const count = opts.matchCount ?? 5;
+  
   const { data, error } = await supabase.rpc("match_documents", {
     query_embedding: queryEmbedding,
-    match_threshold: opts.matchThreshold ?? 0.35,
-    match_count: opts.matchCount ?? 5,
+    match_threshold: targetThreshold,
+    match_count: count,
     p_user_id: userId,
   });
+  
   if (error || !data) return [];
+  
+  if (data.length < 3 && count >= 3) {
+    const { data: fallbackData } = await supabase.rpc("match_documents", {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.0,
+      match_count: 3,
+      p_user_id: userId,
+    });
+    return fallbackData || data;
+  }
+  
   return data;
 }
 

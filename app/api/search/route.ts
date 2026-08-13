@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         const data = await response.json();
         
         // Handle instant answer
-        if (data.AbstractText) {
+        if (typeof data?.AbstractText === 'string' && data.AbstractText) {
           results.push({
             title: data.Heading || data.AbstractSource || query,
             url: data.AbstractURL || `https://duckduckgo.com/?q=${encodedQuery}`,
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         }
         
         // Handle related topics
-        if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+        if (Array.isArray(data?.RelatedTopics) && data.RelatedTopics.length > 0) {
           const related = data.RelatedTopics
             .filter((topic: any) => topic.Text && topic.FirstURL)
             .slice(0, 8)
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           results.push({
             title: wikiData.title || query,
             url: wikiData.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodedQuery}`,
-            snippet: wikiData.extract || `Wikipedia article about ${query}.`,
+            snippet: typeof wikiData?.extract === 'string' ? wikiData.extract : `Wikipedia article about ${query}.`,
             domain: "en.wikipedia.org",
             source: "Wikipedia"
           });
@@ -83,11 +83,11 @@ export async function POST(request: Request) {
         
         if (searchResponse.ok) {
           const searchData = await searchResponse.json();
-          if (searchData.results && searchData.results.length > 0) {
+          if (Array.isArray(searchData?.results) && searchData.results.length > 0) {
             results = searchData.results.slice(0, 8).map((result: any) => ({
               title: result.title || "Search Result",
               url: result.url || "#",
-              snippet: result.content || result.description || "",
+              snippet: typeof result?.content === 'string' ? result.content : (typeof result?.description === 'string' ? result.description : ""),
               domain: result.url ? new URL(result.url).hostname : "",
               source: "SearXNG"
             }));

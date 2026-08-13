@@ -104,6 +104,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A prompt is required" }, { status: 400 });
     }
 
+    const trimmedPrompt = String(prompt).trim();
+    if (trimmedPrompt.length > 1000) {
+      return NextResponse.json({ error: "Prompt must be 1000 characters or fewer" }, { status: 400 });
+    }
+
     const { supabase, getUser } = await createSupabaseServerClient(request);
     const user = await getUser();
     if (!user) {
@@ -112,7 +117,7 @@ export async function POST(request: Request) {
 
     // Seedream first for quality; Gemini native image if fal is unavailable so this never fully breaks.
     const generated =
-      (await generateWithFal(prompt, aspectRatio)) ?? (await generateWithGoogle(prompt));
+      (await generateWithFal(trimmedPrompt, aspectRatio)) ?? (await generateWithGoogle(trimmedPrompt));
 
     if (!generated) {
       throw new Error("Image generation failed — neither fal.ai nor Google image was available.");
@@ -133,7 +138,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       imageUrl: publicUrlData.publicUrl,
-      metadata: { prompt },
+      metadata: { prompt: trimmedPrompt },
     });
   } catch (error: any) {
     console.error("Image Generation Error:", error);

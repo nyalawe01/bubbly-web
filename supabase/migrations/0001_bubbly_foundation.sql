@@ -34,7 +34,7 @@ create table if not exists vault_embeddings (
   document_id uuid references vault_documents(id) on delete cascade,
   user_id uuid references auth.users(id) on delete cascade,
   content text,
-  embedding vector(768),
+  embedding vector(3072),
   created_at timestamptz not null default now()
 );
 

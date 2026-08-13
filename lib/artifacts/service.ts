@@ -83,6 +83,10 @@ function artifactToRow(input: CreateArtifactInput) {
     type: input.type,
     title: input.title,
     content: input.content,
+    // Synchronous generators persist a finished artifact, so the row is ready
+    // from the first insert (the schema default would be 'generating'). The
+    // background path uses createPlaceholder() + markReady() instead.
+    status: "ready",
     config: {
       source_document_ids: input.sourceDocumentIds || [],
       metadata: input.metadata || {},

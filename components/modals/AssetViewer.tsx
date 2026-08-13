@@ -25,11 +25,21 @@ interface AssetViewerProps {
 export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) {
   const [flashcardState, setFlashcardState] = useState({ index: 0, flipped: false, correct: 0, incorrect: 0 });
   const [slideState, setSlideState] = useState({ index: 0 });
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [revealedQuestions, setRevealedQuestions] = useState<Set<number>>(new Set());
+  const [examRevealed, setExamRevealed] = useState<Set<number>>(new Set());
 
   if (!open || !asset) return null;
 
   const renderContent = () => {
     if (asset.type === "flashcards") {
+      if (!asset.content?.length) {
+        return (
+          <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+            <p>No content was generated. Please try again.</p>
+          </div>
+        );
+      }
       return (
         <div className={`flex-1 flex flex-col items-center justify-center p-4 md:p-8 bg-[var(--background)]`}>
           <div className="text-sm font-medium mb-4 md:mb-6 text-[var(--text-secondary)]">
@@ -63,44 +73,46 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
           <div className="mt-8 md:mt-10 flex items-center gap-4 md:gap-6">
             <button
               onClick={() => {
-                if (flashcardState.index < asset.content.length - 1) {
-                  setFlashcardState({
-                    index: flashcardState.index + 1,
-                    flipped: false,
-                    correct: flashcardState.correct,
-                    incorrect: flashcardState.incorrect + 1,
-                  });
+                if (flashcardState.index > 0) {
+                  setFlashcardState({ ...flashcardState, index: flashcardState.index - 1, flipped: false });
                 }
               }}
-              className="p-3 md:p-4 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+              disabled={flashcardState.index === 0}
+              className="px-4 py-2 rounded-full bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] disabled:opacity-50 transition-all font-medium"
             >
-              <XCircle size={24} className="md:w-8 md:h-8" />
+              ← Previous
             </button>
+            <div className="text-sm font-medium text-[var(--text-secondary)] px-2">
+              {flashcardState.index + 1} / {asset.content.length}
+            </div>
             <button
               onClick={() => {
                 if (flashcardState.index < asset.content.length - 1) {
                   setFlashcardState({
+                    ...flashcardState,
                     index: flashcardState.index + 1,
                     flipped: false,
-                    correct: flashcardState.correct + 1,
-                    incorrect: flashcardState.incorrect,
                   });
                 }
               }}
-              className="p-3 md:p-4 rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+              disabled={flashcardState.index === asset.content.length - 1}
+              className="px-4 py-2 rounded-full bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] disabled:opacity-50 transition-all font-medium"
             >
-              <Check size={24} className="md:w-8 md:h-8" />
+              Next →
             </button>
-          </div>
-          <div className={`mt-4 md:mt-6 text-sm font-medium flex gap-4 text-[var(--text-secondary)]`}>
-            <span className="text-emerald-500">Known: {flashcardState.correct}</span>
-            <span className="text-red-500">Learning: {flashcardState.incorrect}</span>
           </div>
         </div>
       );
     }
 
     if (asset.type === "slides") {
+      if (!asset.content?.length) {
+        return (
+          <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+            <p>No content was generated. Please try again.</p>
+          </div>
+        );
+      }
       return (
         <div className={`flex-1 flex flex-col p-4 md:p-10 bg-[var(--background)]`}>
           <div
@@ -142,8 +154,33 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
     }
 
     if (asset.type === "quiz") {
+      if (!asset.content?.questions?.length) {
+        return (
+          <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+            <p>No content was generated. Please try again.</p>
+          </div>
+        );
+      }
+      
+      const correctCount = Object.entries(selectedAnswers).filter(([qIdx, ansIdx]) => {
+        return ansIdx === asset.content.questions[parseInt(qIdx)].correctIndex;
+      }).length;
+      
       return (
         <div className={`flex-1 flex flex-col p-6 bg-[var(--background)] overflow-y-auto hide-scrollbar`}>
+          <div className="max-w-3xl mx-auto w-full mb-6 flex justify-between items-center">
+            <button
+              onClick={() => setRevealedQuestions(new Set(asset.content.questions.map((_: any, i: number) => i)))}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              Reveal All Answers
+            </button>
+            {revealedQuestions.size > 0 && (
+              <div className="text-sm font-medium text-[var(--text-primary)]">
+                You got {correctCount}/{revealedQuestions.size} correct
+              </div>
+            )}
+          </div>
           <div className="space-y-6 max-w-3xl mx-auto w-full">
             {asset.content.questions?.map((q: any, idx: number) => (
               <div
@@ -156,24 +193,48 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
                     <p className="text-sm font-medium text-[var(--text-primary)]">{q.q}</p>
                     {q.options && (
                       <div className="mt-3 space-y-1.5">
-                        {q.options.map((opt: string, oi: number) => (
-                          <div
-                            key={oi}
-                            className={`flex items-center gap-2 text-xs rounded-lg px-2 py-1 ${
-                              oi === q.correctIndex
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium"
-                                : "text-[var(--text-secondary)]"
-                            }`}
-                          >
-                            <span className="w-4">{String.fromCharCode(65 + oi)}.</span>
-                            <span>{opt}</span>
-                            {oi === q.correctIndex && <Check size={12} className="ml-auto" />}
-                          </div>
-                        ))}
+                        {q.options.map((opt: string, oi: number) => {
+                          const isRevealed = revealedQuestions.has(idx);
+                          const isSelected = selectedAnswers[idx] === oi;
+                          const isCorrect = oi === q.correctIndex;
+                          
+                          let bgClass = "hover:bg-[var(--bg-input)] cursor-pointer text-[var(--text-secondary)]";
+                          let textClass = "";
+                          
+                          if (isRevealed) {
+                            if (isCorrect) {
+                              bgClass = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium";
+                            } else if (isSelected) {
+                              bgClass = "bg-red-500/10 text-red-600 dark:text-red-400 font-medium";
+                            } else {
+                              bgClass = "opacity-50 text-[var(--text-secondary)]";
+                            }
+                          } else if (isSelected) {
+                            bgClass = "bg-[var(--bg-input)] font-medium text-[var(--text-primary)]";
+                          }
+
+                          return (
+                            <div
+                              key={oi}
+                              onClick={() => {
+                                if (!revealedQuestions.has(idx)) {
+                                  setSelectedAnswers(prev => ({ ...prev, [idx]: oi }));
+                                  setRevealedQuestions(prev => new Set(prev).add(idx));
+                                }
+                              }}
+                              className={`flex items-center gap-2 text-xs rounded-lg px-2 py-2 transition-colors ${bgClass}`}
+                            >
+                              <span className="w-4">{String.fromCharCode(65 + oi)}.</span>
+                              <span>{opt}</span>
+                              {isRevealed && isCorrect && <Check size={12} className="ml-auto" />}
+                              {isRevealed && isSelected && !isCorrect && <XCircle size={12} className="ml-auto" />}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                    {q.explanation && (
-                      <div className="mt-3 p-2 bg-neutral-100 dark:bg-neutral-900 border border-[var(--border)] rounded-lg text-xs text-[var(--text-secondary)]">
+                    {q.explanation && revealedQuestions.has(idx) && (
+                      <div className="mt-3 p-3 bg-neutral-100 dark:bg-neutral-900 border border-[var(--border)] rounded-lg text-xs text-[var(--text-secondary)]">
                         {q.explanation}
                       </div>
                     )}
@@ -187,16 +248,45 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
     }
 
     if (asset.type === "exam") {
+      if (!asset.content?.sections?.length) {
+        return (
+          <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+            <p>No content was generated. Please try again.</p>
+          </div>
+        );
+      }
       return (
         <div className={`flex-1 flex flex-col p-6 bg-[var(--background)] overflow-y-auto hide-scrollbar`}>
+          <div className="max-w-3xl mx-auto w-full mb-6">
+            <button
+              onClick={() => {
+                const allQs = new Set<number>();
+                let qCount = 0;
+                asset.content.sections.forEach((s: any) => {
+                  s.questions?.forEach(() => {
+                    allQs.add(qCount++);
+                  });
+                });
+                setExamRevealed(allQs);
+              }}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            >
+              Reveal All
+            </button>
+          </div>
           <div className="space-y-8 max-w-3xl mx-auto w-full">
-            {asset.content.sections?.map((section: any, si: number) => (
+            {asset.content.sections?.map((section: any, si: number) => {
+              const startIdx = asset.content.sections.slice(0, si).reduce((acc: number, s: any) => acc + (s.questions?.length || 0), 0);
+              return (
               <div key={si}>
                 <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">{section.name}</h3>
                 <div className="space-y-4">
-                  {section.questions?.map((q: any, idx: number) => (
+                  {section.questions?.map((q: any, qIdxOffset: number) => {
+                    const globalQIdx = startIdx + qIdxOffset;
+                    const isRevealed = examRevealed.has(globalQIdx);
+                    return (
                     <div
-                      key={idx}
+                      key={qIdxOffset}
                       className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -205,40 +295,64 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
                       </div>
                       {q.type === "mcq" && q.options && (
                         <div className="mt-3 space-y-1.5">
-                          {q.options.map((opt: string, oi: number) => (
-                            <div
-                              key={oi}
-                              className={`flex items-center gap-2 text-xs rounded-lg px-2 py-1 ${
-                                oi === q.correctIndex
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium"
-                                  : "text-[var(--text-secondary)]"
-                              }`}
-                            >
-                              <span className="w-4">{String.fromCharCode(65 + oi)}.</span>
-                              <span>{opt}</span>
-                            </div>
-                          ))}
+                          {q.options.map((opt: string, oi: number) => {
+                            const isCorrect = oi === q.correctIndex;
+                            let bgClass = "hover:bg-[var(--bg-input)] cursor-pointer text-[var(--text-secondary)]";
+                            if (isRevealed) {
+                              if (isCorrect) {
+                                bgClass = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium";
+                              } else {
+                                bgClass = "opacity-50 text-[var(--text-secondary)]";
+                              }
+                            }
+                            return (
+                              <div
+                                key={oi}
+                                onClick={() => {
+                                  if (!isRevealed) {
+                                    setExamRevealed(prev => new Set(prev).add(globalQIdx));
+                                  }
+                                }}
+                                className={`flex items-center gap-2 text-xs rounded-lg px-2 py-2 transition-colors ${bgClass}`}
+                              >
+                                <span className="w-4">{String.fromCharCode(65 + oi)}.</span>
+                                <span>{opt}</span>
+                                {isRevealed && isCorrect && <Check size={12} className="ml-auto" />}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                       {(q.type === "short" || q.type === "long") && (
                         <div className="mt-3 space-y-2">
-                          {q.modelAnswer && (
-                            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-600 dark:text-emerald-400">
-                              <span className="font-semibold">Model answer: </span>{q.modelAnswer}
-                            </div>
-                          )}
-                          {q.rubric && (
-                            <div className="p-2 bg-neutral-100 dark:bg-neutral-900 border border-[var(--border)] rounded-lg text-xs text-[var(--text-secondary)]">
-                              <span className="font-semibold">Rubric: </span>{q.rubric}
-                            </div>
+                          {!isRevealed ? (
+                            <button
+                              onClick={() => setExamRevealed(prev => new Set(prev).add(globalQIdx))}
+                              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+                            >
+                              Show Answer
+                            </button>
+                          ) : (
+                            <>
+                              {q.modelAnswer && (
+                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-600 dark:text-emerald-400">
+                                  <span className="font-semibold block mb-1">Model answer: </span>{q.modelAnswer}
+                                </div>
+                              )}
+                              {q.rubric && (
+                                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 border border-[var(--border)] rounded-lg text-xs text-[var(--text-secondary)] whitespace-pre-wrap">
+                                  <span className="font-semibold block mb-1">Rubric: </span>{q.rubric}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       );

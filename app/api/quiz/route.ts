@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       difficulty,
       topic,
       sources,
-    });
+    }, numQuestions);
     const artifact = await service.create({
       ownerId: user.id,
       type: "quiz",

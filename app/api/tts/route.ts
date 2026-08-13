@@ -14,6 +14,9 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-tts"];
+// Gemini TTS models output raw Linear16 PCM audio at these parameters.
+// If the TTS model changes, verify its output format — incorrect values
+// will produce distorted or silent audio.
 const SAMPLE_RATE = 24000;
 const CHANNELS = 1;
 const BITS_PER_SAMPLE = 16;
@@ -99,7 +102,22 @@ export async function POST(request: Request) {
     // Gemini TTS has a practical input ceiling per call — a long tutoring
     // explanation is still just a few sentences, but guard against anything
     // pathological getting sent through.
-    const pcm = await synthesize(prefix + text.trim().slice(0, 4000), apiKey);
+    function truncateAtSentence(text: string, maxLen: number): string {
+      if (text.length <= maxLen) return text;
+      const truncated = text.slice(0, maxLen);
+      // Find the last sentence-ending punctuation
+      const lastSentenceEnd = Math.max(
+        truncated.lastIndexOf('. '),
+        truncated.lastIndexOf('! '),
+        truncated.lastIndexOf('? '),
+        truncated.lastIndexOf('.\\n'),
+        truncated.lastIndexOf('!\\n'),
+        truncated.lastIndexOf('?\\n'),
+      );
+      if (lastSentenceEnd > maxLen * 0.5) return truncated.slice(0, lastSentenceEnd + 1).trim();
+      return truncated.trim();
+    }
+    const pcm = await synthesize(prefix + truncateAtSentence(text.trim(), 4000), apiKey);
     const wav = wrapPcmAsWav(pcm);
 
     return new Response(wav, {

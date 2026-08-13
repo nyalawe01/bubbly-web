@@ -23,6 +23,8 @@ export interface CacheCheckResult {
 //   unrelated questions             ~0.48-0.49
 // A "generic" 0.93-0.96 threshold would only catch near-exact string matches and
 // miss real paraphrases entirely — verified directly against the RPC, not assumed.
+// Threshold calibrated for gemini-embedding-001 (768-dim). If the embedding
+// model changes (see embedText() in vault.ts), re-calibrate this value.
 // 0.72 sits comfortably below the paraphrase floor with a wide margin above unrelated.
 const DEFAULT_THRESHOLD = 0.72;
 
@@ -90,5 +92,5 @@ export function writeCache(
   supabase
     .from("ai_response_cache")
     .insert({ scope, key_text: keyText, embedding, payload, model_used: modelUsed || null })
-    .then(() => {}, (e: any) => console.warn("Cache write failed (non-fatal):", e?.message || e));
+    .then(() => {}, (e: any) => console.warn("Cache write failed (non-fatal):", { scope, keyText: keyText.slice(0, 50), error: e?.message || e }));
 }

@@ -21,6 +21,7 @@ export function ExamModal({ open, onClose, onGenerate, colors, uploadedFiles = [
   const [examType, setExamType] = useState<"guide" | "exam">("guide");
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState("medium");
+  const [questionTypes, setQuestionTypes] = useState<string[]>(['multiple_choice', 'short', 'long']);
   const [files, setFiles] = useState<File[]>([]);
   const [selectedVaultIds, setSelectedVaultIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,28 +92,46 @@ export function ExamModal({ open, onClose, onGenerate, colors, uploadedFiles = [
           </div>
 
           {examType === "exam" && (
-            <div className="mt-6 flex flex-wrap gap-8">
-              <div>
-                <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>Number of Questions</p>
-                <input
-                  type="number"
-                  min={5}
-                  max={50}
-                  value={count}
-                  onChange={(e) => setCount(Number(e.target.value))}
-                  className={`w-24 rounded-lg border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-sm ${colors.textPrimary} outline-none focus:border-[var(--accent)]`}
-                />
+            <div className="mt-6 flex flex-col gap-6">
+              <div className="flex flex-wrap gap-8">
+                <div>
+                  <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>Number of Questions</p>
+                  <input
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={count}
+                    onChange={(e) => setCount(Number(e.target.value))}
+                    className={`w-24 rounded-lg border ${colors.borderBase} ${colors.bgInput} px-3 py-2 text-sm ${colors.textPrimary} outline-none focus:border-[var(--accent)]`}
+                  />
+                </div>
+                <div>
+                  <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>Level of Difficulty</p>
+                  <div className={`flex rounded-full border ${colors.borderBase} ${colors.bgInput} p-0.5`}>
+                    {difficultyOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setDifficulty(option.value)}
+                        className={`icon-motion rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${difficulty === option.value ? `${colors.btnPrimary} shadow-sm` : `${colors.textSecondary} ${colors.bgHover}`}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>Level of Difficulty</p>
-                <div className={`flex rounded-full border ${colors.borderBase} ${colors.bgInput} p-0.5`}>
-                  {difficultyOptions.map((option) => (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--text-primary)]">Question Types</label>
+                <div className="flex flex-wrap gap-2">
+                  {[{value: 'multiple_choice', label: 'Multiple Choice'}, {value: 'short', label: 'Short Answer'}, {value: 'long', label: 'Long Answer'}].map(t => (
                     <button
-                      key={option.value}
-                      onClick={() => setDifficulty(option.value)}
-                      className={`icon-motion rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${difficulty === option.value ? `${colors.btnPrimary} shadow-sm` : `${colors.textSecondary} ${colors.bgHover}`}`}
+                      key={t.value}
+                      onClick={() => setQuestionTypes(prev => 
+                        prev.includes(t.value) ? prev.filter(x => x !== t.value) : [...prev, t.value]
+                      )}
+                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${questionTypes.includes(t.value) ? 'bg-[var(--btn-primary)] text-[var(--btn-primary-text)] border-transparent' : `${colors.borderBase} ${colors.textSecondary}`}`}
                     >
-                      {option.label}
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -150,8 +169,8 @@ export function ExamModal({ open, onClose, onGenerate, colors, uploadedFiles = [
 
         <div className={`flex justify-end border-t ${colors.borderBase} px-6 py-4`}>
           <button
-            disabled={!canGenerate}
-            onClick={() => onGenerate({ examType, config: { count, difficulty, types: ["multiple_choice"] }, files, sourceIds: selectedVaultIds })}
+            disabled={!canGenerate || (examType === "exam" && questionTypes.length === 0)}
+            onClick={() => onGenerate({ examType, config: { count, difficulty, types: questionTypes }, files, sourceIds: selectedVaultIds })}
             className={`icon-motion rounded-full border ${colors.borderBase} ${colors.bgInput} px-6 py-2 text-sm font-medium ${colors.textPrimary} hover:${colors.bgHover} disabled:opacity-40 disabled:pointer-events-none`}
           >
             Generate
