@@ -17,13 +17,15 @@ import { SlidesModal } from "@/components/modals/SlidesModal";
 import { SummaryModal } from "@/components/modals/SummaryModal";
 import { ExamModal } from "@/components/modals/ExamModal";
 import { SourcesModal } from "@/components/modals/SourcesModal";
-import { FilePreviewModal } from "@/components/modals/FilePreviewModal";
+import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { AssetViewer } from "@/components/modals/AssetViewer";
 import { SourceViewerModal } from "@/components/modals/SourceViewerModal";
+import { StudyPlanViewer } from "@/components/modals/StudyPlanViewer";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { uploadFilesToVault } from "@/lib/api/vaultUpload";
 import { downloadChatMarkdown, downloadBlobResponse } from "@/lib/exportChat";
 import { AssetPage } from "@/components/asset/AssetPage";
+import { RecentActivityMobile } from "@/components/ui/RecentActivityMobile";
 
 // CSS Styles
 const customStyles = `
@@ -921,7 +923,11 @@ export default function Workspace() {
 
   const openAssetViewer = (asset: any) => {
     setModalData(asset);
-    setActiveModal("assetViewer");
+    if (asset.type === "study_plan") {
+      setActiveModal("studyPlanViewer");
+    } else {
+      setActiveModal("assetViewer");
+    }
   };
 
   // Open a generated asset as a full page in the chat area (only once it's ready).
@@ -1226,6 +1232,8 @@ export default function Workspace() {
           </button>
         </div>
 
+        {messages.length === 0 && <RecentActivityMobile />}
+
         {/* Chat View */}
         <ChatView
           messages={messages}
@@ -1364,6 +1372,12 @@ export default function Workspace() {
           onClose={() => setActiveModal(null)}
           sources={modalData}
           colors={colors}
+        />
+
+        <StudyPlanViewer
+          open={activeModal === "studyPlanViewer"}
+          onClose={() => setActiveModal(null)}
+          asset={modalData}
         />
 
       </div>

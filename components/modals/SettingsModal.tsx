@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
-import { X, Settings, User, Database, Info, Monitor, Check, LogOut, Trash2 } from "lucide-react";
+import { X, Settings, User, Database, Info, Monitor, Check, LogOut, Trash2, Bot } from "lucide-react";
 import { useTheme, THEME_LABELS } from "@/components/theme/ThemeProvider";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { AnimatedChevron } from "@/components/ui/icons";
 import { THEME_TOKENS, THEME_NAMES, type ThemeName } from "@/shared/constants/themes";
 import { SUPPORTED_LANGS, LANG_LABELS } from "@/shared/i18n/catalog";
 
-type Tab = "general" | "profile" | "data" | "about";
+type Tab = "general" | "profile" | "data" | "about" | "agents";
 
 interface SettingsModalProps {
   open: boolean;
@@ -34,6 +34,7 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
     { id: "general" as Tab, label: t("settings.general"), icon: Settings },
     { id: "profile" as Tab, label: t("settings.profile"), icon: User },
     { id: "data" as Tab, label: t("settings.data"), icon: Database },
+    { id: "agents" as Tab, label: "Agents", icon: Bot },
     { id: "about" as Tab, label: t("settings.about"), icon: Info },
   ];
 
@@ -187,6 +188,43 @@ export function SettingsModal({ open, onClose, initialTab = "general", user, onS
                 <div>
                   <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Delete all chats</p>
                   <button onClick={onDeleteAllChats} className="mt-1.5 rounded-full border border-red-300 px-4 py-1 text-[12px] font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20">Delete all</button>
+                </div>
+              </div>
+            )}
+
+            {tab === "agents" && (
+              <div className="space-y-4">
+                <div className={`border-b ${colors.borderBase} pb-3 flex items-center justify-between`}>
+                  <div>
+                    <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Inactivity Monitor</p>
+                    <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Detects when you are falling behind and builds a catch-up plan.</p>
+                  </div>
+                  <button className={`relative h-5 w-9 rounded-full transition-colors bg-[var(--accent)]`}>
+                    <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all left-5`}></span>
+                  </button>
+                </div>
+                <div className={`border-b ${colors.borderBase} pb-3 flex items-center justify-between`}>
+                  <div>
+                    <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Deadline Guardian</p>
+                    <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Monitors your calendar and warns you 3 days before exams.</p>
+                  </div>
+                  <button className={`relative h-5 w-9 rounded-full transition-colors bg-[var(--accent)]`}>
+                    <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all left-5`}></span>
+                  </button>
+                </div>
+                <div className={`border-b ${colors.borderBase} pb-3 flex items-center justify-between`}>
+                  <div>
+                    <p className={`text-[12px] font-medium ${colors.textPrimary}`}>Knowledge Gap Hunter</p>
+                    <p className={`mt-1 text-[12px] ${colors.textSecondary}`}>Auto-generates review flashcards when your quiz scores drop.</p>
+                  </div>
+                  <button className={`relative h-5 w-9 rounded-full transition-colors bg-[var(--accent)]`}>
+                    <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all left-5`}></span>
+                  </button>
+                </div>
+                <div className={`pt-2`}>
+                  <a href="/agents" className={`w-full block text-center rounded-lg border ${colors.borderBase} ${colors.bgInput} px-4 py-2 text-[12px] font-medium ${colors.textPrimary} hover:${colors.bgHover}`}>
+                    View Agent Activity Log
+                  </a>
                 </div>
               </div>
             )}

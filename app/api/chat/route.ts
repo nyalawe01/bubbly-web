@@ -7,10 +7,11 @@ import { classifyIntent, type RouteDecision } from "@/lib/ai/router";
 import { embedText, fetchVaultContext, formatVaultContextBlock } from "@/lib/ai/vault";
 import { callModel, chatModelFor } from "@/lib/ai/models";
 import { matchCache, writeCache } from "@/lib/ai/cache";
+import { buildNotebookContext } from "@/lib/notebooks/context";
 
 export async function POST(request: Request) {
   try {
-    const { message, history, modelType, files, attachment_context, generateDiagram, generateImage, mode, incognito, responseLanguage } = await request.json();
+    const { message, history, modelType, files, attachment_context, generateDiagram, generateImage, mode, incognito, responseLanguage, notebook_id } = await request.json();
 
     if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
@@ -159,6 +160,34 @@ export async function POST(request: Request) {
       })
       .map((c: any) => ({ type: "file", title: c.file_name || "Untitled", snippet: (c.content || "").slice(0, 150) }));
 
+    let notebookSources: any[] = [];
+    if (notebook_id) {
+      const notebookContext = await buildNotebookContext(supabase, notebook_id, user.id);
+      if (notebookContext) {
+        systemAddenda += `\n\n[NOTEBOOK CONTEXT]\nThe student is studying from the Notebook: "${notebookContext.notebook.title}" (${notebookContext.notebook.course_code || 'No course code'}).\n`;
+        if (notebookContext.notebook.description) {
+          systemAddenda += `Description: ${notebookContext.notebook.description}\n`;
+        }
+        
+        if (notebookContext.documents.length > 0) {
+          systemAddenda += `\nDocuments in this Notebook:\n`;
+          notebookContext.documents.forEach(doc => {
+            systemAddenda += `- ${doc.file_name}: ${doc.ai_summary || 'No summary available.'}\n`;
+            notebookSources.push({ type: "notebook_file", title: doc.file_name, snippet: (doc.ai_summary || "").slice(0, 150) });
+          });
+        }
+        
+        if (notebookContext.artifacts.length > 0) {
+          systemAddenda += `\nGenerated Study Artifacts in this Notebook:\n`;
+          notebookContext.artifacts.forEach(art => {
+            systemAddenda += `- [${art.type}] ${art.title} (Status: ${art.status})\n`;
+          });
+        }
+        
+        systemAddenda += `\nWhen answering, heavily favor the concepts covered in this specific notebook.\n[/NOTEBOOK CONTEXT]\n\n`;
+      }
+    }
+
     let webSources: any[] = [];
     let searchFailed = false;
     if (route.needsWebSearch) {
@@ -188,7 +217,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const combinedSources = [...fileSources, ...attachmentSources, ...webSources];
+    const combinedSources = [...fileSources, ...attachmentSources, ...notebookSources, ...webSources];
 
     if (route.needsDiagram) {
       systemAddenda += diagramAddendum();

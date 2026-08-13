@@ -13,7 +13,9 @@ import {
   FileText,
   Check,
   XCircle,
+  Book
 } from "lucide-react";
+import { NotebookPickerModal } from "./NotebookPickerModal";
 
 interface AssetViewerProps {
   open: boolean;
@@ -28,6 +30,7 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [revealedQuestions, setRevealedQuestions] = useState<Set<number>>(new Set());
   const [examRevealed, setExamRevealed] = useState<Set<number>>(new Set());
+  const [showNotebookPicker, setShowNotebookPicker] = useState(false);
 
   if (!open || !asset) return null;
 
@@ -438,12 +441,39 @@ export function AssetViewer({ open, onClose, asset, colors }: AssetViewerProps) 
               <p className="text-[10px] md:text-xs text-[var(--text-secondary)]">{asset.metadata}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <a 
+              href={`/api/export?id=${asset.id}`} 
+              download 
+              className="px-3 py-1.5 text-sm font-medium bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg flex items-center gap-2"
+            >
+              Export
+            </a>
+            <button
+              onClick={() => setShowNotebookPicker(true)}
+              className="px-3 py-1.5 text-sm font-medium bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg flex items-center gap-2"
+            >
+              <Book size={16} /> Save
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 ml-2 hover:bg-[var(--bg-hover)] rounded-md transition-colors text-[var(--text-secondary)]"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
         {renderContent()}
       </div>
+      
+      {showNotebookPicker && (
+        <NotebookPickerModal
+          isOpen={showNotebookPicker}
+          onClose={() => setShowNotebookPicker(false)}
+          resourceId={asset.id}
+          resourceType="artifact"
+        />
+      )}
     </div>
   );
 }

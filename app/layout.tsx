@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
 import { THEME_CSS_VARS, DEFAULT_THEME } from "@/shared/theme/themes";
+import { MobileTabBar } from "@/components/navigation/MobileTabBar";
 
 // Four logical font roles the theme bundles reference (sans/serif/rounded/mono).
 // Default theme (focus) uses sans + serif, so those preload; the rest are only
@@ -39,6 +40,18 @@ const THEME_INIT_SCRIPT = `
     root.style.setProperty('--font-body', font === 'serif' ? 'var(--font-serif)' : 'var(--font-sans)');
   } catch (e) {}
 })();
+})();
+
+const SW_INIT_SCRIPT = `
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(registration) {
+      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }, function(err) {
+      console.log('ServiceWorker registration failed: ', err);
+    });
+  });
+}
 `;
 
 export const metadata: Metadata = {
@@ -68,16 +81,21 @@ export default function RootLayout({
         <meta name="google-site-verification" content="YK6Hr3TBqPo3VbkdXhKU-DZqh9qa8S521p_uSRpKI8s" />
         <link rel="icon" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/favicon.png" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SW_INIT_SCRIPT }} />
       </head>
       <body
         className="bg-[var(--background)] text-[var(--text-primary)] min-h-[100dvh] overflow-hidden antialiased"
         style={{ fontFamily: "var(--font-body, var(--font-sans))" }}
       >
         <ThemeProvider>
-          <I18nProvider>{children}</I18nProvider>
+          <I18nProvider>
+            {children}
+            <MobileTabBar />
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

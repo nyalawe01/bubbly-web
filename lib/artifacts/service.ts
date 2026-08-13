@@ -23,8 +23,11 @@ export type ArtifactType =
   | "summary"
   | "study_guide"
   | "exam_prep"
+  | "study_plan"
   | "slides"
-  | "notes";
+  | "notes"
+  | "document"
+  | "presentation";
 
 export type ArtifactStatus = "ready" | "generating" | "failed";
 

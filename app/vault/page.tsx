@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   UploadCloud, Search, FileText, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Trash2, X,
-  LayoutGrid, Files, Image as ImageIcon, Sparkles,
+  LayoutGrid, Files, Image as ImageIcon, Sparkles, Camera,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/app/utils/supabase";
 import { IconButton } from "@/components/ui/IconButton";
 import { ArtLayer } from "@/components/ui/ArtLayer";
+import { NotebookPickerModal } from "@/components/modals/NotebookPickerModal";
 
 interface VaultFile {
   id: string;
@@ -39,6 +40,7 @@ export default function VaultScreen() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<VaultFile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pickerFileId, setPickerFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -308,18 +310,44 @@ export default function VaultScreen() {
             <p className="text-[11px] text-zinc-500 mb-4 hidden md:block">Your vault is empty — upload your first document below.</p>
           )}
 
-          <div
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`mb-6 md:mb-8 rounded-2xl border-2 border-dashed transition-colors p-6 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer ${
-              isDragging ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-white/10 hover:border-white/20"
-            }`}
-          >
-            <UploadCloud size={28} className={isDragging ? "text-[var(--accent)]" : "text-zinc-500"} />
-            <p className="text-sm text-zinc-300 mt-3 font-medium">Drop files here, or click to browse</p>
-            <p className="text-xs text-zinc-600 mt-1">PDF, DOCX, PPTX, XLSX, images, and more</p>
+          <div className="flex flex-col md:flex-row gap-4 mb-6 md:mb-8">
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex-1 rounded-2xl border-2 border-dashed transition-colors p-6 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer ${
+                isDragging ? "border-[var(--accent)] bg-[var(--accent)]/5" : "border-white/10 hover:border-white/20"
+              }`}
+            >
+              <UploadCloud size={28} className={isDragging ? "text-[var(--accent)]" : "text-zinc-500"} />
+              <p className="text-sm text-zinc-300 mt-3 font-medium">Drop files here, or click to browse</p>
+              <p className="text-xs text-zinc-600 mt-1">PDF, DOCX, PPTX, XLSX, images, and more</p>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Open device camera logic
+                if (fileInputRef.current) {
+                  fileInputRef.current.setAttribute("capture", "environment");
+                  fileInputRef.current.setAttribute("accept", "image/*");
+                  fileInputRef.current.click();
+                  
+                  // Reset attributes after a delay so normal file upload still works
+                  setTimeout(() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.removeAttribute("capture");
+                      fileInputRef.current.setAttribute("accept", "*");
+                    }
+                  }, 1000);
+                }
+              }}
+              className="md:w-48 rounded-2xl border-2 border-dashed border-white/10 hover:border-white/20 transition-colors p-6 flex flex-col items-center justify-center text-center cursor-pointer bg-white/5"
+            >
+              <Camera size={28} className="text-zinc-500 mb-3" />
+              <p className="text-sm text-zinc-300 font-medium">Scan Notes</p>
+              <p className="text-xs text-zinc-600 mt-1">Take a photo</p>
+            </button>
           </div>
 
           {loading ? (
@@ -470,6 +498,12 @@ export default function VaultScreen() {
                 </button>
               </Link>
               <button
+                onClick={() => setPickerFileId(selectedFile.id)}
+                className="icon-motion px-4 py-2.5 rounded-xl text-sm font-medium bg-white/10 text-white hover:bg-white/20 flex items-center gap-2"
+              >
+                Save to Notebook
+              </button>
+              <button
                 onClick={() => handleDelete(selectedFile)}
                 disabled={deleting}
                 className="icon-motion px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 disabled:opacity-50 flex items-center gap-2"
@@ -479,6 +513,17 @@ export default function VaultScreen() {
             </div>
           </div>
         </div>
+      )}
+        </div>
+      )}
+
+      {pickerFileId && (
+        <NotebookPickerModal
+          isOpen={!!pickerFileId}
+          onClose={() => setPickerFileId(null)}
+          resourceId={pickerFileId}
+          resourceType="document"
+        />
       )}
     </div>
   );
