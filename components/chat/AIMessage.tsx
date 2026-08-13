@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import { RefreshCw, Share, ArrowRight, BrainCircuit, MonitorPlay, ImageIcon, ClipboardList, CheckCircle2, ChevronRight } from "lucide-react";
+import { RefreshCw, Share, ArrowRight, BrainCircuit, MonitorPlay, ImageIcon, ClipboardList, CheckCircle2, ChevronRight, LayoutTemplate } from "lucide-react";
 import { AnimatedCopyIcon } from "@/components/ui/icons";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { ImageViewer } from "@/components/chat/ImageViewer";
@@ -58,6 +58,23 @@ export function AIMessage({
   const openSources = () => {
     setSourceViewerOpen(true);
     onOpenSourceViewer?.(message.sources); // fires legacy callback too, if the page still wires one
+  };
+
+  // Heuristic to detect visualizable concepts in text
+  const isVisualizable = useMemo(() => {
+    if (!message.text || isGenerating) return false;
+    const t = message.text.toLowerCase();
+    return (
+      (t.includes("first") && t.includes("then") && t.includes("next")) ||
+      (t.includes("process") && t.includes("step")) ||
+      (t.includes("compared to") && t.includes("difference")) ||
+      (t.includes("cycle") && t.includes("loop"))
+    );
+  }, [message.text, isGenerating]);
+
+  const handleGenerateDiagram = async () => {
+    // In a real app, this would call an API or change chat state
+    alert("Generating visual explanation (Mock)...");
   };
 
   return (
@@ -160,6 +177,18 @@ export function AIMessage({
             Referenced from {message.sources.length} source{message.sources.length > 1 ? "s" : ""}
             <ChevronRight size={11} />
           </button>
+        )}
+
+        {!isGenerating && isVisualizable && !message.diagram && (
+          <div className="mt-3">
+            <button
+              onClick={handleGenerateDiagram}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${colors.borderBase} ${colors.bgCard} ${colors.bgHover} shadow-sm text-[12px] font-medium transition-all hover:-translate-y-0.5 text-indigo-600`}
+            >
+              <LayoutTemplate size={14} />
+              Explain Visually
+            </button>
+          </div>
         )}
 
         {!isGenerating && message.text && (

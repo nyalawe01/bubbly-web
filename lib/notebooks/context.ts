@@ -26,18 +26,57 @@ export async function buildNotebookContext(
   notebookId: string,
   ownerId: string
 ): Promise<NotebookContext | null> {
-  // 1. Fetch Notebook
+  // 1. Fetch Notebook (check ownership OR if it is shared with the user)
   const { data: notebook, error: notebookError } = await supabase
     .from("notebooks")
-    .select("id, title, description, course_code")
+    .select("id, title, description, course_code, user_id")
     .eq("id", notebookId)
-    .eq("user_id", ownerId)
     .single();
 
   if (notebookError || !notebook) {
     console.error("Failed to fetch notebook context:", notebookError);
     return null;
   }
+
+  // Check if owner
+  let hasAccess = notebook.user_id === ownerId;
+
+  // If not owner, check shared resources
+  if (!hasAccess) {
+    const { data: shared } = await supabase
+      .from("shared_resources")
+      .select("permission")
+      .eq("resource_type", "notebook")
+      .eq("resource_id", notebookId)
+      .eq("shared_with_user_id", ownerId)
+      .single();
+    
+    if (shared) {
+      hasAccess = true;
+    }
+  }
+
+  // If still no access, check if it's a classroom notebook they belong to
+  if (!hasAccess) {
+    const { data: classroom } = await supabase
+      .from("classrooms")
+      .select("id")
+      .eq("notebook_id", notebookId)
+      .single();
+    
+    if (classroom) {
+      const { data: member } = await supabase
+        .from("classroom_members")
+        .select("id")
+        .eq("classroom_id", classroom.id)
+        .eq("user_id", ownerId)
+        .single();
+      
+      if (member) hasAccess = true;
+    }
+  }
+
+  if (!hasAccess) return null;
 
   // 2. Fetch linked Documents
   const { data: linkedDocs, error: docsError } = await supabase
