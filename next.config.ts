@@ -4,10 +4,10 @@ const nextConfig: NextConfig = {
   eslint: {
     // ESLint runs during builds by default; this block exists so the flag can be
     // flipped quickly if a future tooling regression breaks the build again.
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

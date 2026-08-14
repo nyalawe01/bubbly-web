@@ -75,7 +75,7 @@ export function SourcesPanel({ isOpen, onClose, sources }: SourcesPanelProps) {
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 overflow-hidden mt-0.5">
                     {favicon ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                       
                       <img src={favicon} alt="" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
                     ) : (
                       <Globe size={14} className="text-zinc-500" />
@@ -128,7 +128,7 @@ export function SourcesRow({ sources, onOpenAll }: { sources: Source[]; onOpenAl
           >
             <div className="w-3.5 h-3.5 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
               {favicon ? (
-                // eslint-disable-next-line @next/next/no-img-element
+                 
                 <img src={favicon} alt="" className="w-2.5 h-2.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
               ) : (
                 <Globe size={8} className="text-zinc-500" />

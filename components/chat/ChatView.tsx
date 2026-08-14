@@ -17,6 +17,34 @@ const DotLottieReact = dynamic(
 );
 const HERO_LOTTIE_SRC = "https://lottie.host/a7719fd3-75b2-40a4-92bf-1393879984f6/s6oIomjnI3.lottie";
 
+const THINKING_PHRASES = [
+  "Calculating...",
+  "Digesting...",
+  "Performing...",
+  "Synchronizing...",
+  "Synthesizing...",
+  "Reviewing...",
+  "Working...",
+  "Researching...",
+  "Vibing...",
+  "Computing...",
+  "Analyzing...",
+  "Sketching..."
+];
+
+function ThinkingLabel() {
+  const [phrase, setPhrase] = useState(THINKING_PHRASES[0]);
+
+  useEffect(() => {
+    let interval = setInterval(() => {
+      setPhrase(THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return <span className="text-[10px] md:text-xs text-zinc-400 ml-1">{phrase}</span>;
+}
+
 interface ChatViewProps {
   messages: any[];
   isIncognito?: boolean;
@@ -216,7 +244,7 @@ export function ChatView(props: ChatViewProps) {
                     <span />
                     <span />
                   </div>
-                  <span className="text-[10px] md:text-xs text-zinc-400 ml-1">Thinking...</span>
+                  <ThinkingLabel />
                 </div>
               </div>
             )}

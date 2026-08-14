@@ -159,7 +159,7 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
 
         <div className="flex-1 overflow-auto panel-scroll bg-[var(--background)] flex items-center justify-center p-4 md:p-6">
           {isImage && objectUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+             
             <img src={objectUrl} alt={file.name} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
           ) : isPdf && objectUrl ? (
             <iframe src={objectUrl} className="w-full h-[65vh] rounded-lg bg-white" title={file.name} />

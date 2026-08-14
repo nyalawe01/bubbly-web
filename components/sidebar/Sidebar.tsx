@@ -257,7 +257,7 @@ export function Sidebar({
         >
           <div className={`w-6 h-6 rounded-full ${colors.btnPrimary} flex items-center justify-center font-bold text-[10px] border ${colors.borderBase} flex-shrink-0 overflow-hidden`}>
             {user?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+               
               <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
             ) : (
               user?.name?.charAt(0)?.toUpperCase() || "U"

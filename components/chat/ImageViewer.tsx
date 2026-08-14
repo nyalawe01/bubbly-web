@@ -40,7 +40,7 @@ export function ImageViewer({ image }: ImageViewerProps) {
             </button>
           </div>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        { }
         <img
           src={image.url}
           alt={image.prompt || "Generated image"}
@@ -60,7 +60,7 @@ export function ImageViewer({ image }: ImageViewerProps) {
           >
             <X size={20} />
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img src={image.url} alt={image.prompt || "Generated image"} className="max-w-full max-h-full object-contain" />
         </div>
       )}

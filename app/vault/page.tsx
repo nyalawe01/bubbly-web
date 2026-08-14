@@ -433,7 +433,7 @@ export default function VaultScreen() {
              <div className="flex-1 overflow-y-auto hide-scrollbar p-4 md:p-6">
                {selectedFile.imageUrl ? (
                  // Actual image content for raster uploads
-                 // eslint-disable-next-line @next/next/no-img-element
+                  
                  <img
                    src={selectedFile.imageUrl}
                    alt={selectedFile.name}

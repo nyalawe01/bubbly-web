@@ -35,7 +35,7 @@ function AttachmentThumb({ file }: { file: any }) {
   return (
     <>
       {isImage && previewUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
+         
         <img src={previewUrl} alt={file?.name} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full p-2 flex flex-col justify-between bg-zinc-800">
