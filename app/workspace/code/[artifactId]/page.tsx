@@ -1,11 +1,12 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { use } from "react";
 import { ArrowLeft, Play, Save, Terminal, Code2, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AIProgrammerPanel } from "@/components/workspace/AIProgrammerPanel";
 
-export default function CodeWorkspace({ params }: { params: { artifactId: string } }) {
-  const { artifactId } = params;
+export default function CodeWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
+  const { artifactId } = use(params);
   const router = useRouter();
   const [code, setCode] = useState("def reverse_list(head):\n    # Write your code here\n    pass\n\nprint('Hello Code!')");
   const [output, setOutput] = useState("");

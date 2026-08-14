@@ -1,4 +1,4 @@
-import { callModel } from "@/lib/llm/model";
+import { callModel, chatModelFor } from "@/lib/ai/models";
 import { createClient } from "@supabase/supabase-js";
 
 export async function planTask(userId: string, objective: string, context: any) {
@@ -28,11 +28,14 @@ Generate a structured task plan. Return a JSON object with this exact schema:
 `;
 
   try {
-    const rawOutput = await callModel(prompt, "gpt-4o");
-    const jsonStart = rawOutput.indexOf("{");
-    const jsonEnd = rawOutput.lastIndexOf("}");
-    const jsonStr = rawOutput.substring(jsonStart, jsonEnd + 1);
-    const plan = JSON.parse(jsonStr);
+    const chatModel = chatModelFor("expert");
+    const rawOutput: any = await callModel(chatModel, {
+      messages: [{ role: "system", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+
+    const plan = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 
     const { data: task, error: taskError } = await supabase.from("tasks").insert({
       user_id: userId,

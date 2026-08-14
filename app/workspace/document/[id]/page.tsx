@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/app/utils/supabase";
 import { ArrowLeft, Save, Sparkles, Wand2, Presentation, FileText, FileQuestion } from "lucide-react";
@@ -8,8 +9,8 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 
-export default function DocumentWorkspacePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function DocumentWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);

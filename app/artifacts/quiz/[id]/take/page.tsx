@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/app/utils/supabase";
 
-export default function TakeQuizPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function TakeQuizPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [asset, setAsset] = useState<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

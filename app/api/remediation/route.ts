@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { buildNotebookContext } from "@/lib/notebooks/context";
-import { createArtifact } from "@/lib/artifacts/service";
+
 import { callModel, chatModelFor } from "@/lib/ai/models";
 
 export async function POST(request: Request) {
@@ -29,24 +29,32 @@ export async function POST(request: Request) {
     }
 
     // 1. Generate targeted flashcards
-    const flashcardArtifact = await createArtifact(supabase, {
-      ownerId: user.id,
+    const { data: flashcardArtifact, error: err1 } = await supabase.from("notebook_assets").insert({
+      user_id: user.id,
       type: "flashcards",
       title: `${topic} - Flashcards`,
       content: {},
       config: { notebook_id, topic, targeted: true },
       status: "generating",
-    });
+    }).select().single();
+
+    if (err1 || !flashcardArtifact) {
+      return NextResponse.json({ error: "Failed to create flashcard placeholder" }, { status: 500 });
+    }
 
     // 2. Generate targeted mini-lesson (summary)
-    const lessonArtifact = await createArtifact(supabase, {
-      ownerId: user.id,
+    const { data: lessonArtifact, error: err2 } = await supabase.from("notebook_assets").insert({
+      user_id: user.id,
       type: "summary",
       title: `${topic} - Mini Lesson`,
       content: {},
       config: { notebook_id, topic, targeted: true },
       status: "generating",
-    });
+    }).select().single();
+
+    if (err2 || !lessonArtifact) {
+      return NextResponse.json({ error: "Failed to create lesson placeholder" }, { status: 500 });
+    }
 
     // Async generation
     (async () => {

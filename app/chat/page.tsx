@@ -99,7 +99,7 @@ export default function Workspace() {
 
   // Modal States
   const [activeModal, setActiveModal] = useState<
-    "settings" | "quiz" | "flashcards" | "slides" | "summary" | "exam" | "sources" | "filePreview" | "assetViewer" | "sourceViewer" | "search" | "generating" | null
+    "settings" | "quiz" | "flashcards" | "slides" | "summary" | "exam" | "sources" | "filePreview" | "assetViewer" | "sourceViewer" | "studyPlanViewer" | "search" | "generating" | null
   >(null);
   const [settingsTab, setSettingsTab] = useState<"general" | "profile" | "data" | "about">("general");
   const [modalData, setModalData] = useState<any>(null);
@@ -1354,10 +1354,9 @@ export default function Workspace() {
         />
 
         <FilePreviewModal
-          open={activeModal === "filePreview"}
+          isOpen={activeModal === "filePreview"}
           onClose={() => setActiveModal(null)}
           file={modalData}
-          colors={colors}
         />
 
         <AssetViewer

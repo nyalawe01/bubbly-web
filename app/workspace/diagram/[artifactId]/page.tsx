@@ -1,12 +1,13 @@
 "use client";
 import { useState, useCallback } from "react";
+import { use } from "react";
 import { ArrowLeft, Save, MousePointer2, Plus, Download, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // Since we cannot install reactflow right now, this is a mock representation 
 // of the Diagram Editor canvas for Phase 10.
-export default function DiagramWorkspace({ params }: { params: { artifactId: string } }) {
-  const { artifactId } = params;
+export default function DiagramWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
+  const { artifactId } = use(params);
   const router = useRouter();
   
   const [nodes, setNodes] = useState([

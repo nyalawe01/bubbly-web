@@ -40,7 +40,7 @@ const THEME_INIT_SCRIPT = `
     root.style.setProperty('--font-body', font === 'serif' ? 'var(--font-serif)' : 'var(--font-sans)');
   } catch (e) {}
 })();
-})();
+`;
 
 const SW_INIT_SCRIPT = `
 if ('serviceWorker' in navigator) {

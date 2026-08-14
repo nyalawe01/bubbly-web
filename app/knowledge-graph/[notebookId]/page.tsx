@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { use } from "react";
 import { createClient } from "@/app/utils/supabase";
 import { ArrowLeft, Search, Filter, ZoomIn, ZoomOut, Maximize, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -42,7 +43,7 @@ const nodeTypes = {
   concept: ConceptNode,
 };
 
-export default function KnowledgeGraph({ params }: { params: { notebookId: string } }) {
+export default function KnowledgeGraph({ params }: { params: Promise<{ notebookId: string }> }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);

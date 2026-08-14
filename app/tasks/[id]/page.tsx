@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import { use } from "react";
 import { createClient } from "@/app/utils/supabase";
 import { ArrowLeft, CheckCircle2, Circle, Clock, PlayCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function TaskDetail({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function TaskDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [task, setTask] = useState<any>(null);
   const [steps, setSteps] = useState<any[]>([]);
   const router = useRouter();

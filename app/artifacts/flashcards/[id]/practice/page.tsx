@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { use } from "react";
 import { ArrowLeft, CheckCircle2, WifiOff } from "lucide-react";
 import { createClient } from "@/app/utils/supabase";
 import { saveArtifactOffline, getArtifactOffline, queueOfflineAction } from "@/lib/offline/db";
 
-export default function PracticeFlashcardsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function PracticeFlashcardsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
   const router = useRouter();
   const [asset, setAsset] = useState<any>(null);
   const [session, setSession] = useState<any>(null);

@@ -146,154 +146,6 @@ export function ChatView(props: ChatViewProps) {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
-"use client";
-import { useRef, useState, useEffect } from "react";
-import dynamic from "next/dynamic";
-import { ArrowDown, EyeOff } from "lucide-react";
-import { ChatInput } from "./ChatInput";
-import { ChatQuestionsForm } from "./ChatQuestionsForm";
-import { UserMessage } from "./UserMessage";
-import { AIMessage } from "./AIMessage";
-import { QuickActionPills } from "./QuickActionPills";
-import { ArtLayer } from "@/components/ui/ArtLayer";
-import { useI18n } from "@/components/i18n/I18nProvider";
-
-// Canvas/WASM-based — rendered client-only to avoid an SSR/hydration mismatch.
-const DotLottieReact = dynamic(
-  () => import("@lottiefiles/dotlottie-react").then((m) => m.DotLottieReact),
-  { ssr: false }
-);
-const HERO_LOTTIE_SRC = "https://lottie.host/a7719fd3-75b2-40a4-92bf-1393879984f6/s6oIomjnI3.lottie";
-
-interface ChatViewProps {
-  messages: any[];
-  isIncognito?: boolean;
-  onToggleIncognito?: () => void;
-  isGenerating: boolean;
-  inputText: string;
-  setInputText: (text: string) => void;
-  attachedFiles: any[];
-  setAttachedFiles: React.Dispatch<React.SetStateAction<any[]>>;
-  selectedModel: "instant" | "expert" | "vision";
-  showModelPills: boolean;
-  isRecording: boolean;
-  recordingDuration: number;
-  isTranscribing: boolean;
-  onSendMessage: (e?: React.FormEvent) => void;
-  onModelSelect: (model: "instant" | "expert" | "vision") => void;
-  onStartRecording: () => void;
-  onStopRecording: () => void;
-  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onGoogleDriveClick?: () => void;
-  onFileClick: (file: any) => void;
-  onEditMessage: (index: number, newText: string) => void;
-  onRegenerate: () => void;
-  onShare: (text: string) => void;
-  onOpenSourceViewer: (sources: any[]) => void;
-  onOpenAsset: (asset: any) => void;
-  answeredQuestions: Record<string, boolean>;
-  onOpenQuestions: (msg: any) => void;
-  activeQuestions: { id: string; intro?: string; questions: any[] } | null;
-  onSubmitQuestions: (answers: { id: string; question: string; answer: string }[]) => void;
-  onCloseQuestions: () => void;
-  onOpenQuiz: () => void;
-  onOpenFlashcards: () => void;
-  onOpenSummary: () => void;
-  onOpenSlides: () => void;
-  onOpenExam: () => void;
-  colors: any;
-  logoSrc: string;
-  theme: string;
-  chatBottomRef: React.RefObject<HTMLDivElement | null>;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-}
-
-const ACTION_KEYS = ["quiz", "flashcards", "slides", "summary", "exam"] as const;
-
-export function ChatView(props: ChatViewProps) {
-  const {
-    messages,
-    isIncognito,
-    onToggleIncognito,
-    isGenerating,
-    inputText,
-    setInputText,
-    attachedFiles,
-    setAttachedFiles,
-    selectedModel,
-    showModelPills,
-    isRecording,
-    recordingDuration,
-    isTranscribing,
-    onSendMessage,
-    onModelSelect,
-    onStartRecording,
-    onStopRecording,
-    onFileUpload,
-    onGoogleDriveClick,
-    onFileClick,
-    onEditMessage,
-    onRegenerate,
-    onShare,
-    onOpenSourceViewer,
-    onOpenAsset,
-    answeredQuestions,
-    onOpenQuestions,
-    activeQuestions,
-    onSubmitQuestions,
-    onCloseQuestions,
-    onOpenQuiz,
-    onOpenFlashcards,
-    onOpenSummary,
-    onOpenSlides,
-    onOpenExam,
-    colors,
-    logoSrc,
-    theme,
-    chatBottomRef,
-    inputRef,
-    fileInputRef,
-  } = props;
-
-  const { t } = useI18n();
-  const actionLabels: Record<(typeof ACTION_KEYS)[number], string> = {
-    quiz: t("nav.quiz"),
-    summary: t("nav.summary"),
-    flashcards: t("nav.flashcards"),
-    slides: t("nav.slides"),
-    exam: t("nav.examPrep"),
-  };
-
-  // Floating "jump to latest" control: show it whenever the student has scrolled
-  // meaningfully up from the newest message, so they can shoot back down fast.
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showJump, setShowJump] = useState(false);
-
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowJump(distanceFromBottom > 240);
-  };
-
-  const scrollToLatest = () => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  };
-
-  // Re-evaluate on new messages / streaming growth (content can push the bottom away).
-  useEffect(() => {
-    handleScroll();
-  }, [messages, isGenerating]);
-
-  // On-screen keyboard detection (mobile browsers shrink the visual viewport,
-  // not the layout viewport, when the keyboard opens). Only the composer
-  // should stay pinned above the keyboard — everything else extra (the
-  // generator pills) hides so it doesn't fight the composer for the
-  // remaining space; it reappears once the keyboard closes.
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
     let maxHeight = vv.height;
     const onResize = () => {
@@ -303,23 +155,6 @@ export function ChatView(props: ChatViewProps) {
     vv.addEventListener("resize", onResize);
     return () => vv.removeEventListener("resize", onResize);
   }, []);
-
-  const [loadingText, setLoadingText] = useState("Thinking...");
-  useEffect(() => {
-    if (!isGenerating) {
-      setLoadingText("Thinking...");
-      return;
-    }
-    const words = [
-      "Thinking...", "Calculating...", "Researching...", "Reviewing...", 
-      "Digesting...", "Performing...", "Synchronizing...", "Creating...", 
-      "Vibing...", "Sketching...", "Analyzing...", "Synthesizing..."
-    ];
-    const interval = setInterval(() => {
-      setLoadingText(words[Math.floor(Math.random() * words.length)]);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [isGenerating]);
 
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden">
@@ -361,6 +196,33 @@ export function ChatView(props: ChatViewProps) {
                    <AIMessage
                      message={msg}
                      isGenerating={isGenerating}
+                    onRegenerate={onRegenerate}
+                    onShare={onShare}
+                    onOpenSourceViewer={onOpenSourceViewer}
+                    onOpenAsset={onOpenAsset}
+                    questionsAnswered={!!(msg.id && answeredQuestions[msg.id])}
+                    onOpenQuestions={() => onOpenQuestions(msg)}
+                    colors={colors}
+                    theme={theme}
+                  />
+                )}
+              </div>
+            ))}
+            {isGenerating && (
+              <div className="flex items-start gap-2 md:gap-4 animate-in fade-in">
+                <div className="flex items-center gap-2 h-10">
+                  <div className="think-orbit">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <span className="text-[10px] md:text-xs text-zinc-400 ml-1">Thinking...</span>
+                </div>
+              </div>
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+        )}
       </div>
 
       {/* Jump-to-latest — floats centered just above the composer, only when scrolled up

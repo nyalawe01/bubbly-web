@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createArtifact } from "@/lib/artifacts/service";
+
 import { buildNotebookContext } from "@/lib/notebooks/context";
 import { callModel, chatModelFor } from "@/lib/ai/models";
 
@@ -31,14 +31,18 @@ export async function POST(request: Request) {
     }
 
     // 2. Create a placeholder artifact
-    const artifact = await createArtifact(supabase, {
-      ownerId: user.id,
+    const { data: artifact, error: err } = await supabase.from("notebook_assets").insert({
+      user_id: user.id,
       type: "study_plan",
       title: `Study Plan: ${context.notebook.title}`,
       content: {},
       config: { notebook_id, target_date, goals },
       status: "generating",
-    });
+    }).select().single();
+
+    if (err || !artifact) {
+      return NextResponse.json({ error: "Failed to create artifact placeholder" }, { status: 500 });
+    }
 
     // 3. Generate the Study Plan asynchronously
     (async () => {

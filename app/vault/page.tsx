@@ -514,8 +514,6 @@ export default function VaultScreen() {
           </div>
         </div>
       )}
-        </div>
-      )}
 
       {pickerFileId && (
         <NotebookPickerModal

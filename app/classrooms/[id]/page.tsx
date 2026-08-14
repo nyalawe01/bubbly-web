@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
+import { use } from "react";
 import { createClient } from "@/app/utils/supabase";
 import { ArrowLeft, Users, FileText, CheckSquare, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function ClassroomDetail({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function ClassroomDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [classroom, setClassroom] = useState<any>(null);
   const [role, setRole] = useState<string>("student");
   const [members, setMembers] = useState<any[]>([]);

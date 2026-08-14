@@ -1,4 +1,4 @@
-import { callModel } from "@/lib/llm/model";
+import { callModel, chatModelFor } from "@/lib/ai/models";
 import { createClient } from "@supabase/supabase-js";
 
 // Knowledge Graph Extractor and Relationship Inference
@@ -32,11 +32,14 @@ ${content.substring(0, 4000)} // truncate for token limits if necessary
 `;
 
   try {
-    const rawOutput = await callModel(prompt, "gpt-4o-mini");
-    const jsonStart = rawOutput.indexOf("{");
-    const jsonEnd = rawOutput.lastIndexOf("}");
-    const jsonStr = rawOutput.substring(jsonStart, jsonEnd + 1);
-    const parsed = JSON.parse(jsonStr);
+    const chatModel = chatModelFor("fast");
+    const rawOutput: any = await callModel(chatModel, {
+      messages: [{ role: "system", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+
+    const parsed = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 
     if (!parsed.concepts || !Array.isArray(parsed.concepts)) return;
 

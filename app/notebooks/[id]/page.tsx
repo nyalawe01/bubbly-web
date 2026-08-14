@@ -4,7 +4,9 @@ import Link from "next/link";
 import { Brain, BookOpen, Layers, Edit, Trash, Plus } from "lucide-react";
 import { StrengthenTopicButton } from "@/components/ui/StrengthenTopicButton";
 
-export default async function NotebookPage({ params }: { params: { id: string } }) {
+export default async function NotebookPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
   const { supabase, getUser } = await createSupabaseServerClient();
   const user = await getUser();
 
@@ -16,7 +18,7 @@ export default async function NotebookPage({ params }: { params: { id: string } 
   const { data: notebook, error: notebookError } = await supabase
     .from("notebooks")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .eq("user_id", user.id)
     .single();
 
@@ -28,24 +30,24 @@ export default async function NotebookPage({ params }: { params: { id: string } 
   const { data: linkedDocs } = await supabase
     .from("notebook_documents")
     .select("document_id, added_at, vault_documents(*)")
-    .eq("notebook_id", params.id)
+    .eq("notebook_id", id)
     .order("added_at", { ascending: false });
 
   // 3. Fetch linked Artifacts
   const { data: linkedArtifacts } = await supabase
     .from("notebook_artifacts")
     .select("artifact_id, added_at, notebook_assets(*)")
-    .eq("notebook_id", params.id)
+    .eq("notebook_id", id)
     .order("added_at", { ascending: false });
   // 4. Fetch student performance
   const { data: performances } = await supabase
     .from("student_performance")
     .select("*")
-    .eq("notebook_id", params.id)
+    .eq("notebook_id", id)
     .order("mastery_level", { ascending: false });
 
-  const documents = linkedDocs?.map((row) => row.vault_documents) || [];
-  const artifacts = linkedArtifacts?.map((row) => row.notebook_assets) || [];
+  const documents: any[] = linkedDocs?.map((row) => row.vault_documents) || [];
+  const artifacts: any[] = linkedArtifacts?.map((row) => row.notebook_assets) || [];
 
   const quizzes = artifacts.filter(a => a.type === 'quiz');
   const flashcards = artifacts.filter(a => a.type === 'flashcards');
@@ -138,7 +140,7 @@ export default async function NotebookPage({ params }: { params: { id: string } 
                       />
                     </div>
                     {pct < 50 && (
-                      <StrengthenTopicButton notebookId={params.id} topic={perf.topic} />
+                      <StrengthenTopicButton notebookId={id} topic={perf.topic} />
                     )}
                   </div>
                 );

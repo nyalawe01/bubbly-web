@@ -1,4 +1,4 @@
-import { callModel } from "@/lib/llm/model";
+import { callModel, chatModelFor } from "@/lib/ai/models";
 
 export async function generateDiagram(text: string, diagramType: string = "flowchart") {
   const prompt = `
@@ -22,15 +22,18 @@ Text to visualize:
 `;
 
   try {
-    const rawOutput = await callModel(prompt, "gpt-4o");
-    const jsonStart = rawOutput.indexOf("{");
-    const jsonEnd = rawOutput.lastIndexOf("}");
-    const jsonStr = rawOutput.substring(jsonStart, jsonEnd + 1);
-    const diagram = JSON.parse(jsonStr);
+    const chatModel = chatModelFor("expert");
+    const rawOutput: any = await callModel(chatModel, {
+      messages: [{ role: "system", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    });
+    
+    const diagram = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
     
     // Add default layout coordinates if not provided perfectly
     let xOffset = 100;
-    diagram.nodes.forEach((n: any) => {
+    diagram.nodes?.forEach((n: any) => {
       if (!n.x) { n.x = xOffset; xOffset += 200; }
       if (!n.y) { n.y = 100; }
     });
