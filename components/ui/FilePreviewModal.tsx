@@ -16,6 +16,7 @@ import { IconButton } from "./IconButton";
 
 export interface PreviewableFile {
   name: string;
+  filename?: string;
   type?: string;
   size?: number;
   url?: string; // present for already-uploaded/sent files
