@@ -30,8 +30,8 @@ interface FilePreviewModalProps {
 
 const TEXT_EXTENSIONS = ["txt", "md", "csv", "json", "js", "ts", "tsx", "html", "css", "svg"];
 
-function getExtension(name: string) {
-  return name.split(".").pop()?.toLowerCase() || "";
+function getExtension(name?: string) {
+  return name?.split(".").pop()?.toLowerCase() || "";
 }
 
 function formatBytes(bytes?: number) {
@@ -71,7 +71,8 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
   const [textContent, setTextContent] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState(false);
 
-  const ext = file ? getExtension(file.name) : "";
+  const fileName = file ? (file.name || file.filename || "") : "";
+  const ext = fileName ? getExtension(fileName) : "";
   const isImage = file?.type?.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif"].includes(ext);
   const isPdf = file?.type === "application/pdf" || ext === "pdf";
   const isText = TEXT_EXTENSIONS.includes(ext);
@@ -143,13 +144,13 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
               <FileText size={14} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{file.name}</h3>
+              <h3 className="text-sm font-medium text-[var(--text-primary)] truncate">{fileName || "Unknown File"}</h3>
               {file.size && <p className="text-[10px] text-[var(--text-secondary)]">{formatBytes(file.size)}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {objectUrl && (
-              <a href={objectUrl} download={file.name}>
+              <a href={objectUrl} download={fileName || "download"}>
                 <IconButton icon={Download} label="Download" />
               </a>
             )}
@@ -160,9 +161,9 @@ export function FilePreviewModal({ file, isOpen, onClose }: FilePreviewModalProp
         <div className="flex-1 overflow-auto panel-scroll bg-[var(--background)] flex items-center justify-center p-4 md:p-6">
           {isImage && objectUrl ? (
              
-            <img src={objectUrl} alt={file.name} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
+            <img src={objectUrl} alt={fileName || "image preview"} className="max-w-full max-h-[65vh] object-contain rounded-lg" />
           ) : isPdf && objectUrl ? (
-            <iframe src={objectUrl} className="w-full h-[65vh] rounded-lg bg-white" title={file.name} />
+            <iframe src={objectUrl} className="w-full h-[65vh] rounded-lg bg-white" title={fileName || "pdf preview"} />
           ) : isText || isRichDocument ? (
             loadingText ? (
               <div className="text-zinc-500 text-sm flex items-center gap-2">

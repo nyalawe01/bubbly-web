@@ -14,29 +14,30 @@ export const DEFAULT_THEME: ThemeName = "focus";
 const SEMANTIC = { success: "#22c55e", danger: "#ef4444", warning: "#f59e0b", info: "#3b82f6" };
 
 export const THEMES: Record<ThemeName, Theme> = {
-  // Light — warm Claude-like: cream paper, dark-brown ink, clay accent.
+  // Light — Premium minimalist (Notion/Linear style): crisp white, deep zinc text, stark contrast.
   focus: {
-    id: "focus", name: "Light", mood: "Clean, warm daylight.",
+    id: "focus", name: "Light", mood: "Clean, pristine daylight.",
     colors: {
-      bg: "#FFFFFF", surface: "#FFFFFF", surface2: "#F4F4F5", border: "#E6E6E6",
-      text: "#1A1A1A", text2: "#6B6B6B",
-      accent: "#005E5D", accent2: "#1F7A79", accentSoft: "#E0F0EF", accentInk: "#FFFFFF",
+      bg: "#FFFFFF", surface: "#FFFFFF", surface2: "#F4F4F5", border: "#E4E4E7",
+      text: "#09090B", text2: "#71717A",
+      accent: "#18181B", accent2: "#27272A", accentSoft: "#F4F4F5", accentInk: "#FFFFFF",
     },
-    typography: { displayFont: "serif", bodyFont: "sans", displayWeight: 500, tracking: "-0.01em" },
-    shape: { radius: "16px", radiusSm: "10px" },
+    typography: { displayFont: "sans", bodyFont: "sans", displayWeight: 600, tracking: "-0.02em" },
+    shape: { radius: "12px", radiusSm: "8px" },
     motion: { ease: "cubic-bezier(0.16,1,0.3,1)", intensity: "calm" },
     assets: { motifSet: "focus" },
   },
+  // Dark — Premium dark mode: deep OLED blacks, subtle zinc surfaces, bright white accents.
   dark: {
-    id: "dark", name: "Dark", mood: "Warm low-light focus.",
+    id: "dark", name: "Dark", mood: "Deep space focus.",
     colors: {
-      bg: "#2B2B2B", surface: "#333333", surface2: "#3C3C3C", border: "rgba(255,255,255,0.10)",
-      text: "#ECECEC", text2: "#9A9A9A",
-      accent: "#00807E", accent2: "#1FA39F", accentSoft: "rgba(0,128,126,0.2)", accentInk: "#FFFFFF",
+      bg: "#000000", surface: "#09090B", surface2: "#18181B", border: "#27272A",
+      text: "#FAFAFA", text2: "#A1A1AA",
+      accent: "#FFFFFF", accent2: "#E4E4E7", accentSoft: "#27272A", accentInk: "#000000",
     },
-    typography: { displayFont: "serif", bodyFont: "sans", displayWeight: 500, tracking: "-0.01em" },
-    shape: { radius: "16px", radiusSm: "10px" },
-    motion: { ease: "cubic-bezier(0.16,1,0.3,1)", intensity: "normal" },
+    typography: { displayFont: "sans", bodyFont: "sans", displayWeight: 600, tracking: "-0.02em" },
+    shape: { radius: "12px", radiusSm: "8px" },
+    motion: { ease: "cubic-bezier(0.16,1,0.3,1)", intensity: "calm" },
     assets: { motifSet: "dark" },
   },
 };
