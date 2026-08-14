@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { use } from "react";
 import { ArrowLeft, Play, Save, Terminal, Code2, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Editor from "@monaco-editor/react";
 import { AIProgrammerPanel } from "@/components/workspace/AIProgrammerPanel";
 
 export default function CodeWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
@@ -12,24 +13,36 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [sandboxId, setSandboxId] = useState<string | null>(null);
 
   const handleRun = async () => {
     setIsRunning(true);
-    setOutput("Executing...\n");
+    setOutput("Executing in secure sandbox...\n");
     
-    // Simulate sandbox delay
-    setTimeout(() => {
-      let result = "";
-      if (code.includes("print('Hello Code!')")) {
-        result = "Hello Code!\n";
-      } else if (code.includes("error")) {
-        result = "Traceback (most recent call last):\n  File \"main.py\", line 1, in <module>\nNameError: name 'error' is not defined\n";
-      } else {
-        result = "Execution completed.\n";
-      }
-      setOutput(result);
+    try {
+      const res = await fetch("/api/sandbox/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language: "python", sandboxId })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to execute");
+      
+      setSandboxId(data.sandboxId);
+      
+      const { stdout, stderr, execution_time_ms } = data.result;
+      let out = "";
+      if (stdout) out += stdout + "\n";
+      if (stderr) out += stderr + "\n";
+      out += `\n[Finished in ${execution_time_ms}ms]`;
+      
+      setOutput(out.trim());
+    } catch (err: any) {
+      setOutput(`Error: ${err.message}`);
+    } finally {
       setIsRunning(false);
-    }, 800);
+    }
   };
 
   return (
@@ -64,13 +77,25 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
       <div className="flex flex-1 overflow-hidden">
         {/* Editor Area */}
         <div className="flex-1 flex flex-col h-full min-w-0">
-          <div className="flex-1 p-4 overflow-auto font-mono text-[13px] leading-relaxed relative group">
-            {/* Mock Monaco Editor */}
-            <textarea 
+          <div className="flex-1 overflow-hidden relative group">
+            <Editor
+              height="100%"
+              defaultLanguage="python"
+              theme="vs-dark"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full h-full bg-transparent resize-none outline-none text-gray-300"
-              spellCheck="false"
+              onChange={(val) => setCode(val || "")}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: "var(--font-mono)",
+                lineHeight: 24,
+                padding: { top: 16 },
+                scrollBeyondLastLine: false,
+                smoothScrolling: true,
+                cursorBlinking: "smooth",
+                cursorSmoothCaretAnimation: "on",
+                formatOnPaste: true,
+              }}
             />
           </div>
           

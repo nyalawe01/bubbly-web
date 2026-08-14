@@ -1,7 +1,7 @@
 import { callModel, chatModelFor } from "@/lib/ai/models";
 import { createClient } from "@supabase/supabase-js";
 
-export async function planTask(userId: string, objective: string, context: any) {
+export async function planTask(taskId: string, objective: string, context: any) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -37,12 +37,11 @@ Generate a structured task plan. Return a JSON object with this exact schema:
 
     const plan = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
 
-    const { data: task, error: taskError } = await supabase.from("tasks").insert({
-      user_id: userId,
+    const { data: task, error: taskError } = await supabase.from("tasks").update({
       title: plan.title,
       description: objective,
       status: "in_progress",
-    }).select().single();
+    }).eq("id", taskId).select().single();
 
     if (taskError || !task) throw taskError;
 
@@ -57,9 +56,13 @@ Generate a structured task plan. Return a JSON object with this exact schema:
 
     await supabase.from("task_steps").insert(steps);
 
+    // Optionally trigger the executor right away
+    // await executeTaskStep(taskId);
+
     return task;
   } catch (err) {
     console.error("Failed to plan task:", err);
+    await supabase.from("tasks").update({ status: "failed", title: "Task Planning Failed" }).eq("id", taskId);
     throw err;
   }
 }

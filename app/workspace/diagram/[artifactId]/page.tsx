@@ -1,20 +1,65 @@
 "use client";
 import { useState, useCallback } from "react";
 import { use } from "react";
-import { ArrowLeft, Save, MousePointer2, Plus, Download, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { ArrowLeft, Save, MousePointer2, Plus, Download, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+import ReactFlow, { Background, Controls, MiniMap, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge } from "reactflow";
+import "reactflow/dist/style.css";
 
-// Since we cannot install reactflow right now, this is a mock representation 
-// of the Diagram Editor canvas for Phase 10.
 export default function DiagramWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
   const { artifactId } = use(params);
   const router = useRouter();
   
-  const [nodes, setNodes] = useState([
-    { id: '1', label: 'Client', x: 200, y: 200 },
-    { id: '2', label: 'SYN', x: 400, y: 150 },
-    { id: '3', label: 'Server', x: 600, y: 200 }
+  const [nodes, setNodes] = useState<Node[]>([
+    { id: '1', type: 'input', data: { label: 'Client' }, position: { x: 250, y: 100 } },
+    { id: '2', data: { label: 'SYN' }, position: { x: 250, y: 200 } },
+    { id: '3', type: 'output', data: { label: 'Server' }, position: { x: 250, y: 300 } }
   ]);
+  
+  const [edges, setEdges] = useState<Edge[]>([
+    { id: 'e1-2', source: '1', target: '2', animated: true },
+    { id: 'e2-3', source: '2', target: '3', animated: true }
+  ]);
+
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const onNodesChange = useCallback(
+    (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+  
+  const onEdgesChange = useCallback(
+    (changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onConnect = useCallback(
+    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    []
+  );
+
+  const generateDiagram = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/diagram/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const data = await res.json();
+      if (data.diagram) {
+        setNodes(data.diagram.nodes || []);
+        setEdges(data.diagram.edges || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setPrompt("");
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 font-sans">
@@ -24,11 +69,28 @@ export default function DiagramWorkspace({ params }: { params: Promise<{ artifac
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="font-semibold text-gray-900 leading-tight">TCP Handshake Flow</h1>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Flowchart • Saved</span>
+            <h1 className="font-semibold text-gray-900 leading-tight">Flowchart Diagram</h1>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Flowchart • Editing</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 mr-4">
+            <input 
+              type="text" 
+              placeholder="Generate with AI..." 
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              className="bg-transparent border-none text-sm px-3 py-1 focus:outline-none w-64"
+            />
+            <button 
+              onClick={generateDiagram}
+              disabled={loading || !prompt.trim()}
+              className="bg-white p-1.5 rounded shadow-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50 transition-colors"
+            >
+              <Sparkles size={16} />
+            </button>
+          </div>
+
           <button className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded" title="Download PNG"><Download size={18} /></button>
           <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 ml-2">
             <Save size={16} /> Save
@@ -37,47 +99,19 @@ export default function DiagramWorkspace({ params }: { params: Promise<{ artifac
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Toolbar */}
-        <div className="w-16 border-r bg-white shrink-0 flex flex-col items-center py-4 gap-4 z-10">
-          <button className="p-3 text-indigo-600 bg-indigo-50 rounded-xl" title="Select"><MousePointer2 size={20} /></button>
-          <button className="p-3 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-xl" title="Add Node"><Plus size={20} /></button>
-        </div>
-
-        {/* Canvas Area (Mock) */}
-        <div className="flex-1 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-[length:24px_24px] relative overflow-hidden bg-slate-50/50">
-          
-          <div className="absolute inset-0">
-            {/* Draw edges (SVG) */}
-            <svg className="w-full h-full absolute top-0 left-0 pointer-events-none">
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
-                </marker>
-              </defs>
-              <line x1="280" y1="200" x2="380" y2="160" stroke="#64748b" strokeWidth="2" markerEnd="url(#arrowhead)" />
-              <line x1="480" y1="160" x2="580" y2="200" stroke="#64748b" strokeWidth="2" markerEnd="url(#arrowhead)" />
-            </svg>
-            
-            {/* Draw nodes */}
-            {nodes.map(n => (
-              <div 
-                key={n.id} 
-                className="absolute w-32 h-16 bg-white border-2 border-indigo-200 rounded-xl shadow-sm flex items-center justify-center font-medium text-gray-800 cursor-move hover:border-indigo-500 hover:shadow-md transition-shadow"
-                style={{ left: n.x - 64, top: n.y - 32 }}
-              >
-                {n.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom Right Controls */}
-          <div className="absolute bottom-6 right-6 flex items-center gap-1 bg-white border shadow-sm rounded-lg p-1">
-            <button className="p-2 text-gray-500 hover:text-gray-900 rounded"><ZoomOut size={16} /></button>
-            <span className="text-xs font-medium text-gray-600 px-2">100%</span>
-            <button className="p-2 text-gray-500 hover:text-gray-900 rounded"><ZoomIn size={16} /></button>
-            <div className="w-px h-4 bg-gray-200 mx-1"></div>
-            <button className="p-2 text-gray-500 hover:text-gray-900 rounded"><Maximize size={16} /></button>
-          </div>
+        <div className="flex-1 relative bg-white">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            fitView
+          >
+            <Background color="#ccc" gap={16} />
+            <Controls />
+            <MiniMap nodeStrokeColor={() => '#6366f1'} />
+          </ReactFlow>
         </div>
       </div>
     </div>

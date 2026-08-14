@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Notebooks } from "./Notebooks";
 import { Recents } from "./Recents";
+import { NotificationsPopover } from "./NotificationsPopover";
 import { createClient } from "@/app/utils/supabase";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { motion } from "framer-motion";
@@ -50,6 +51,7 @@ interface SidebarProps {
   onOpenSlides: () => void;
   onOpenExam: () => void;
   onNavigateToVault: () => void;
+  onOpenNewTask: () => void;
   onSignOut?: () => void; // optional — falls back to a real Supabase sign-out if the page doesn't wire one
   colors: any;
   logoSrc: string;
@@ -85,6 +87,7 @@ export function Sidebar({
   onOpenSlides,
   onOpenExam,
   onNavigateToVault,
+  onOpenNewTask,
   onSignOut,
   colors,
   logoSrc,
@@ -175,6 +178,15 @@ export function Sidebar({
           <Plus size={16} className="flex-shrink-0" />
           {showContent && <span className="text-[13px] font-medium truncate">{t("nav.newChat")}</span>}
         </button>
+        <button
+          onClick={onOpenNewTask}
+          className={`icon-motion w-full flex items-center gap-2.5 rounded-lg transition-colors ${colors.textPrimary} ${colors.bgHover} border ${colors.borderBase} ${
+            showContent ? "px-2.5 py-2" : "justify-center py-2"
+          }`}
+        >
+          <BrainCircuit size={16} className="flex-shrink-0" />
+          {showContent && <span className="text-[13px] font-medium truncate">New Task</span>}
+        </button>
       </div>
 
       {/* Single unified scroll region: tools + Notebooks + Recents scroll together. */}
@@ -254,6 +266,10 @@ export function Sidebar({
             </button>
           </div>
         )}
+
+        <div className="mb-2">
+          <NotificationsPopover colors={colors} showContent={showContent} />
+        </div>
 
         <button
           onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}

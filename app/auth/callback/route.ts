@@ -30,13 +30,24 @@ export async function GET(request: Request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+    if (!error && session) {
+      // If the user signed in with Google, save their provider_token (access token) to user_plugins
+      if (session.provider_token) {
+        await supabase.from("user_plugins").upsert({
+          user_id: session.user.id,
+          plugin_id: "google_drive",
+          enabled: true,
+          access_token: session.provider_token,
+          refresh_token: session.provider_refresh_token,
+          settings: {}
+        });
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
 
-    console.error("OAuth code exchange failed:", error.message, error);
+    console.error("OAuth code exchange failed:", error?.message, error);
   }
 
   // Redirect back to the login screen on authentication error loops

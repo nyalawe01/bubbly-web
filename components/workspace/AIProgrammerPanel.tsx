@@ -9,24 +9,63 @@ export function AIProgrammerPanel({ code, output, onApplyFix }: { code: string, 
 
   const hasError = output.includes("Traceback") || output.includes("Error");
 
-  const sendPrompt = (prompt: string) => {
-    setMessages(prev => [...prev, { role: "user", content: prompt }]);
+  const sendPrompt = async (prompt: string) => {
+    const newMessages = [...messages, { role: "user", content: prompt }];
+    setMessages(newMessages);
     setInput("");
     setIsTyping(true);
     
-    setTimeout(() => {
-      let reply = "";
-      if (prompt.includes("explain") || prompt.includes("Explain")) {
-        reply = "This code defines a function `reverse_list` that takes the head of a linked list. Currently, it just has a `pass` statement, meaning it does nothing. Finally, it prints a greeting.";
-      } else if (prompt.includes("fix") || prompt.includes("Fix")) {
-        reply = "I found the issue. The variable `error` is not defined. Here is the fixed code:\n```python\nprint('Fixed!')\n```";
-      } else {
-        reply = "I'm your AI Pair Programmer. I can help you write, explain, or debug this code. Select some code or tell me what you want to do.";
-      }
+    // Create placeholder for AI message
+    setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+    
+    const payloadMessage = `${prompt}\n\n[CONTEXT]\nCode:\n${code}\n\nOutput:\n${output}\n[/CONTEXT]`;
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: payloadMessage,
+          history: messages,
+        })
+      });
       
-      setMessages(prev => [...prev, { role: "ai", content: reply }]);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) return;
+
       setIsTyping(false);
-    }, 1000);
+      let content = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // Strip out sources tags if any
+        let cleanChunk = chunk;
+        const srcIndex = cleanChunk.indexOf("[SOURCES]");
+        if (srcIndex !== -1) {
+          cleanChunk = cleanChunk.substring(0, srcIndex);
+        }
+        
+        content += cleanChunk;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1].content = content;
+          return updated;
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1].content = "Sorry, I encountered an error analyzing that.";
+        return updated;
+      });
+      setIsTyping(false);
+    }
   };
 
   return (

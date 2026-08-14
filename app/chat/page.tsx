@@ -21,6 +21,7 @@ import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { AssetViewer } from "@/components/modals/AssetViewer";
 import { SourceViewerModal } from "@/components/modals/SourceViewerModal";
 import { StudyPlanViewer } from "@/components/modals/StudyPlanViewer";
+import { NewTaskModal } from "@/components/modals/NewTaskModal";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { uploadFilesToVault } from "@/lib/api/vaultUpload";
 import { downloadChatMarkdown, downloadBlobResponse } from "@/lib/exportChat";
@@ -99,7 +100,7 @@ export default function Workspace() {
 
   // Modal States
   const [activeModal, setActiveModal] = useState<
-    "settings" | "quiz" | "flashcards" | "slides" | "summary" | "exam" | "sources" | "filePreview" | "assetViewer" | "sourceViewer" | "studyPlanViewer" | "search" | "generating" | null
+    "settings" | "quiz" | "flashcards" | "slides" | "summary" | "exam" | "sources" | "filePreview" | "assetViewer" | "sourceViewer" | "studyPlanViewer" | "search" | "generating" | "newTask" | null
   >(null);
   const [settingsTab, setSettingsTab] = useState<"general" | "profile" | "data" | "about">("general");
   const [modalData, setModalData] = useState<any>(null);
@@ -1194,6 +1195,7 @@ export default function Workspace() {
   onRenameAsset={renameAsset}
   onDeleteAsset={deleteAsset}
   onShareAsset={shareAsset}
+  onOpenNewTask={() => setActiveModal("newTask")}
   onOpenSettings={() => { setActiveModal("settings"); setSettingsTab("general"); }}
   onOpenQuiz={() => setActiveModal("quiz")}
   onOpenFlashcards={() => setActiveModal("flashcards")}
@@ -1378,6 +1380,16 @@ export default function Workspace() {
           onClose={() => setActiveModal(null)}
           asset={modalData}
         />
+
+        {activeModal === "newTask" && (
+          <NewTaskModal 
+            onClose={() => setActiveModal(null)}
+            onSuccess={(taskId) => {
+              setActiveModal(null);
+              window.location.href = `/tasks/${taskId}`;
+            }}
+          />
+        )}
 
       </div>
     </div>

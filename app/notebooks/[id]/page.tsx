@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Brain, BookOpen, Layers, Edit, Trash, Plus } from "lucide-react";
 import { StrengthenTopicButton } from "@/components/ui/StrengthenTopicButton";
+import { LivePresence } from "@/components/ui/LivePresence";
 
 export default async function NotebookPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -82,6 +83,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <LivePresence roomId={id} />
             <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all">
               Add Content
             </button>

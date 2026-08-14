@@ -3,10 +3,14 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/app/utils/supabase";
 import { CheckCircle2, Clock, PlayCircle, Plus } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { NewTaskModal } from "@/components/modals/NewTaskModal";
 
 export default function TasksDashboard() {
   const [tasks, setTasks] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     supabase.from("tasks").select("*").order("created_at", { ascending: false }).then(({ data }) => {
@@ -18,7 +22,10 @@ export default function TasksDashboard() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Study Tasks</h1>
-        <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-premium transition-all"
+        >
           <Plus size={16} /> New Task
         </button>
       </div>
@@ -26,13 +33,13 @@ export default function TasksDashboard() {
       <div className="grid gap-4">
         {tasks.map(task => (
           <Link key={task.id} href={`/tasks/${task.id}`}>
-            <div className="bg-white border p-5 rounded-xl shadow-sm hover:border-indigo-300 transition-all cursor-pointer flex items-center justify-between">
+            <div className="bg-white border p-5 rounded-xl shadow-sm hover:border-indigo-300 transition-all cursor-pointer flex items-center justify-between group hover:shadow-md">
               <div>
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  {task.status === 'completed' ? <CheckCircle2 size={16} className="text-emerald-500" /> : <PlayCircle size={16} className="text-indigo-500" />}
+                  {task.status === 'completed' ? <CheckCircle2 size={16} className="text-emerald-500" /> : <PlayCircle size={16} className="text-indigo-500 group-hover:animate-pulse" />}
                   {task.title}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">{task.description}</p>
+                <p className="text-sm text-gray-500 mt-1 line-clamp-1">{task.description}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${task.status === 'in_progress' ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -54,6 +61,16 @@ export default function TasksDashboard() {
           </div>
         )}
       </div>
+
+      {isModalOpen && (
+        <NewTaskModal 
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={(taskId) => {
+            setIsModalOpen(false);
+            router.push(`/tasks/${taskId}`);
+          }}
+        />
+      )}
     </div>
   );
 }
