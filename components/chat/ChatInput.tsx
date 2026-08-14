@@ -199,7 +199,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className={`w-full ${colors.bgCard} border ${colors.borderBase} rounded-[22px] md:rounded-[24px] p-1.5 focus-within:${colors.borderFocus} ${theme === "dark" ? "" : "shadow-lg"} transition-all flex flex-col relative overflow-visible`}>
+      <div className={`w-full glass-input border ${colors.borderBase} rounded-[22px] md:rounded-[24px] p-1.5 shadow-premium border-glow transition-all flex flex-col relative overflow-visible`}>
         <div className="absolute inset-0 rounded-[22px] md:rounded-[24px] overflow-hidden pointer-events-none">
           <div className="glow-line-left absolute top-0 h-[1.5px] w-1/2 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-70"></div>
           <div className="glow-line-right absolute bottom-0 h-[1.5px] w-1/2 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-70"></div>

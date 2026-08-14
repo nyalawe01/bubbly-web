@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Paperclip, ChevronDown, ChevronUp, Copy, Check, Pencil, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { FilePreviewModal, type PreviewableFile } from "@/components/ui/FilePreviewModal";
 
 interface UserMessageProps {
@@ -54,9 +55,14 @@ export function UserMessage({ message, onEdit, colors }: UserMessageProps) {
     // Wider than before, and grows to the LEFT (right edge stays anchored by the
     // outer justify-end wrapper). Copy/Edit sit bottom-right, under the bubble,
     // invisible until the bubble/row is hovered — group-hover, no layout shift.
-    <div className="group flex flex-col items-end max-w-[88%] md:max-w-[78%]">
+    <motion.div 
+      initial={{ opacity: 0, y: 15, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="group flex flex-col items-end max-w-[88%] md:max-w-[75%]"
+    >
       <div
-        className={`w-full rounded-xl p-3 md:p-3 text-[15px] md:text-[14px] ${colors.bgInput} whitespace-pre-wrap border ${colors.borderBase} shadow-sm`}
+        className={`w-full rounded-2xl md:rounded-[20px] p-3.5 md:p-4 text-[15px] md:text-[14px] ${colors.bgInput} whitespace-pre-wrap border ${colors.borderBase} shadow-premium`}
       >
         {message.files && message.files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2">
@@ -152,6 +158,6 @@ export function UserMessage({ message, onEdit, colors }: UserMessageProps) {
         isOpen={!!previewFile}
         onClose={() => setPreviewFile(null)}
       />
-    </div>
+    </motion.div>
   );
 }

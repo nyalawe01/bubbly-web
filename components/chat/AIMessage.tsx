@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { RefreshCw, Share, ArrowRight, BrainCircuit, MonitorPlay, ImageIcon, ClipboardList, CheckCircle2, ChevronRight, LayoutTemplate } from "lucide-react";
+import { motion } from "framer-motion";
 import { AnimatedCopyIcon } from "@/components/ui/icons";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { ImageViewer } from "@/components/chat/ImageViewer";
@@ -78,7 +79,12 @@ export function AIMessage({
   };
 
   return (
-    <div className="w-full flex items-start gap-2 md:gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full flex items-start gap-2 md:gap-4"
+    >
       <div className="flex-1 min-w-0">
         <div className={`mt-1 ${theme === "dark" ? "" : ""}`}>
           {segments.map((seg, i) =>
@@ -214,6 +220,6 @@ export function AIMessage({
         sources={message.sources || []}
         colors={colors}
       />
-    </div>
+    </motion.div>
   );
 }

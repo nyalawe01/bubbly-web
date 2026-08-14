@@ -20,6 +20,7 @@ import { Notebooks } from "./Notebooks";
 import { Recents } from "./Recents";
 import { createClient } from "@/app/utils/supabase";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { motion } from "framer-motion";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -132,11 +133,14 @@ export function Sidebar({
   ];
 
   return (
-    <div
+    <motion.div
+      initial={false}
+      animate={{ width: isMobileMenuOpen ? 280 : isOpen ? 240 : 56 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className={`
-      fixed md:relative z-40 h-full transition-all duration-300 flex flex-col border-r ${colors.borderBase} ${colors.bgSidebar}
-      ${sidebarWidth}
+      fixed md:relative z-40 h-full flex flex-col border-r ${colors.borderBase} glass-panel
       ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      overflow-hidden
     `}
     >
       {/* Header — wordmark only (no logo image), no bottom border line. */}
@@ -272,6 +276,6 @@ export function Sidebar({
           {showContent && <ChevronDown size={14} className={`${colors.textSecondary} flex-shrink-0`} />}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
