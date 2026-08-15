@@ -1150,27 +1150,8 @@ export default function Workspace() {
     </div>
   );
   
-  const createBlankWorkspace = async (type: 'code' | 'diagram') => {
-    try {
-      const { data, error } = await supabase
-        .from('notebook_assets')
-        .insert({
-          user_id: user.id,
-          type: type,
-          title: `New ${type === 'code' ? 'Code Sandbox' : 'Diagram'}`,
-          status: 'ready',
-          content: {}
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      if (data) {
-        router.push(`/workspace/${type}/${data.id}`);
-      }
-    } catch (e: any) {
-      alert("Failed to create workspace: " + e.message);
-    }
+  const createBlankWorkspace = (type: 'code' | 'diagram') => {
+    router.push(`/workspace/${type}/new`);
   };
   if (!isAuthenticated || showAuthScreen) return (
     <div className={`h-dvh w-full ${colors.bgApp} flex items-center justify-center transition-colors duration-300`}>
