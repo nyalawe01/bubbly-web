@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { use } from "react";
-import { ArrowLeft, Play, Save, Terminal, Code2, PanelRightOpen, PanelRightClose, Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { ArrowLeft, Play, Save, Terminal, Code2, PanelRightOpen, PanelRightClose, Sparkles, Loader2, ArrowRight, Paperclip, Mic, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Editor from "@monaco-editor/react";
 import { AIProgrammerPanel } from "@/components/workspace/AIProgrammerPanel";
@@ -17,7 +17,7 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
   
   const [viewState, setViewState] = useState<ViewState>("welcome");
   const [prompt, setPrompt] = useState("");
-  
+  const [isFocused, setIsFocused] = useState(false);
   const [code, setCode] = useState("");
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -71,16 +71,20 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
     <div className={`flex flex-col h-screen font-sans overflow-hidden ${colors.bgApp} ${colors.textPrimary}`}>
       
       {/* HEADER - Always visible but styled appropriately */}
-      <motion.div 
-        layout
-        className={`h-12 border-b flex items-center justify-between px-4 shrink-0 z-20 relative ${colors.bgSidebar} ${colors.borderBase}`}
-      >
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className={`hover:opacity-70 transition-opacity ${colors.textSecondary}`}>
-            <ArrowLeft size={18} />
-          </button>
-          <AnimatePresence>
-            {viewState === "editor" && (
+      {/* HEADER - Only visible when in editor */}
+      <AnimatePresence>
+        {viewState === "editor" && (
+          <motion.div 
+            layout
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className={`h-12 border-b flex items-center justify-between px-4 shrink-0 z-20 relative ${colors.bgSidebar} ${colors.borderBase}`}
+          >
+            <div className="flex items-center gap-4">
+              <button onClick={() => router.back()} className={`hover:opacity-70 transition-opacity ${colors.textSecondary}`}>
+                <ArrowLeft size={18} />
+              </button>
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -89,12 +93,8 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
                 <Code2 size={16} className="text-violet-500" />
                 <span className="font-medium">main.py</span>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        
-        <AnimatePresence>
-          {viewState === "editor" && (
+            </div>
+            
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -114,9 +114,9 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
                 {panelOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
               </button>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 relative flex overflow-hidden">
@@ -132,71 +132,65 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
               transition={{ duration: 0.4, ease: "easeInOut" }}
               className="absolute inset-0 flex flex-col items-center justify-center z-10"
             >
-              <div className="w-full max-w-2xl px-6 flex flex-col items-center">
+              <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-12">
                 
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="mb-8 flex flex-col items-center"
+                {/* Central Chat / Action Area */}
+                <div 
+                  className={`
+                    relative flex items-end w-full rounded-2xl p-2 transition-all duration-300
+                    ${colors.bgCard} shadow-2xl backdrop-blur-xl
+                    before:absolute before:inset-0 before:-z-10 before:rounded-2xl before:transition-all before:duration-500
+                    ${isFocused ? 'before:bg-gradient-to-r before:from-violet-500 before:via-fuchsia-500 before:to-violet-500 before:p-[2px] before:animate-pulse before:shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'before:bg-neutral-500/20 before:p-[1px]'}
+                  `}
                 >
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-2xl ${colors.bgCard} ${colors.borderBase} border`}>
-                    <Code2 size={32} className="text-violet-500" />
-                  </div>
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-center">What do you want to build?</h1>
-                  <p className={`text-center text-lg ${colors.textSecondary}`}>
-                    Describe your app, or start from a template.
-                  </p>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="w-full relative group"
-                >
-                  <div className={`absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl blur opacity-25 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200`}></div>
-                  <div className={`relative flex items-center w-full rounded-xl border shadow-xl overflow-hidden ${colors.bgInput} ${colors.borderBase}`}>
-                    <div className="pl-4 pr-2">
-                      {viewState === "generating" ? (
-                        <Loader2 className="animate-spin text-violet-500" size={24} />
-                      ) : (
-                        <Sparkles className="text-violet-500" size={24} />
-                      )}
-                    </div>
-                    <input 
-                      type="text"
-                      disabled={viewState === "generating"}
+                  <div className={`w-full flex items-end gap-2 rounded-xl p-2 ${colors.bgCard}`}>
+                    <button className={`p-3 shrink-0 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
+                      <Paperclip size={20} />
+                    </button>
+                    
+                    <textarea 
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleGenerate(prompt);
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleGenerate(prompt);
+                        }
                       }}
-                      placeholder="Build a Tanzanian agriculture app..."
-                      className={`w-full py-4 px-2 bg-transparent outline-none text-lg ${colors.textPrimary} placeholder-opacity-50`}
+                      placeholder="What do you want to build?"
+                      className={`w-full bg-transparent border-none resize-none max-h-48 min-h-[44px] py-3 px-2 text-sm focus:outline-none placeholder:text-neutral-500 ${colors.textPrimary}`}
+                      rows={Math.min(5, prompt.split('\n').length || 1)}
                     />
-                    <button 
-                      onClick={() => handleGenerate(prompt)}
-                      disabled={viewState === "generating" || !prompt.trim()}
-                      className={`mr-2 p-2 rounded-lg transition-colors ${prompt.trim() ? colors.btnPrimary : "opacity-50 cursor-not-allowed"}`}
-                    >
-                      <ArrowRight size={20} />
-                    </button>
+                    
+                    <div className="flex items-center gap-1 shrink-0 pb-1 pr-1">
+                      <button className={`p-2.5 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
+                        <Mic size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleGenerate(prompt)}
+                        disabled={!prompt.trim() || viewState === "generating"}
+                        className={`p-2.5 rounded-xl transition-all ${prompt.trim() ? 'bg-violet-500 text-white shadow-md hover:bg-violet-600 hover:scale-105 active:scale-95' : `${colors.textSecondary} opacity-50`}`}
+                      >
+                        {viewState === "generating" ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      </button>
+                    </div>
                   </div>
-                </motion.div>
+                </div>
 
+                {/* Glass Grid Suggestions */}
                 <motion.div 
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="w-full mt-12"
+                  className="w-full"
                 >
-                  <p className={`text-xs font-semibold uppercase tracking-wider mb-4 px-2 ${colors.textSecondary}`}>Smart Suggestions</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
-                      { title: "React Portfolio", desc: "A modern personal site." },
-                      { title: "To-Do API", desc: "Python FastAPI backend." },
-                      { title: "Data Analyzer", desc: "Pandas script for CSVs." }
+                      { title: "Generate an e-commerce website", desc: "Full-stack React & Node.js" },
+                      { title: "Build a To-Do API", desc: "Python FastAPI backend." },
+                      { title: "Data Analyzer Script", desc: "Pandas script for CSV processing." }
                     ].map((suggestion, i) => (
                       <button 
                         key={i}
@@ -205,10 +199,10 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
                           handleGenerate(suggestion.title);
                         }}
                         disabled={viewState === "generating"}
-                        className={`text-left p-4 rounded-xl border transition-all hover:scale-[1.02] active:scale-[0.98] ${colors.bgCard} ${colors.borderBase} hover:border-violet-500/50 cursor-pointer`}
+                        className={`text-left p-5 rounded-2xl border transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] ${colors.bgCard} bg-opacity-50 backdrop-blur-md ${colors.borderBase} hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10 cursor-pointer`}
                       >
-                        <h3 className={`font-semibold mb-1 ${colors.textPrimary}`}>{suggestion.title}</h3>
-                        <p className={`text-xs ${colors.textSecondary}`}>{suggestion.desc}</p>
+                        <h3 className={`font-semibold mb-2 text-sm ${colors.textPrimary}`}>{suggestion.title}</h3>
+                        <p className={`text-xs opacity-70 ${colors.textSecondary}`}>{suggestion.desc}</p>
                       </button>
                     ))}
                   </div>
