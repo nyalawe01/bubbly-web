@@ -5,6 +5,7 @@ import { ArrowLeft, Play, Save, Terminal, Code2, PanelRightOpen, PanelRightClose
 import { useRouter } from "next/navigation";
 import Editor from "@monaco-editor/react";
 import { AIProgrammerPanel } from "@/components/workspace/AIProgrammerPanel";
+import { UniversalPromptInput } from "@/components/ui/UniversalPromptInput";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -135,48 +136,17 @@ export default function CodeWorkspace({ params }: { params: Promise<{ artifactId
               <div className="w-full max-w-2xl px-6 flex flex-col items-center gap-12">
                 
                 {/* Central Chat / Action Area */}
-                <div 
-                  className={`
-                    relative flex items-end w-full rounded-2xl p-2 transition-all duration-300
-                    ${colors.bgCard} shadow-2xl backdrop-blur-xl
-                    before:absolute before:inset-0 before:-z-10 before:rounded-2xl before:transition-all before:duration-500
-                    ${isFocused ? 'before:bg-gradient-to-r before:from-violet-500 before:via-fuchsia-500 before:to-violet-500 before:p-[2px] before:animate-pulse before:shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'before:bg-neutral-500/20 before:p-[1px]'}
-                  `}
-                >
-                  <div className={`w-full flex items-end gap-2 rounded-xl p-2 ${colors.bgCard}`}>
-                    <button className={`p-3 shrink-0 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
-                      <Paperclip size={20} />
-                    </button>
-                    
-                    <textarea 
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleGenerate(prompt);
-                        }
-                      }}
-                      placeholder="What do you want to build?"
-                      className={`w-full bg-transparent border-none resize-none max-h-48 min-h-[44px] py-3 px-2 text-sm focus:outline-none placeholder:text-neutral-500 ${colors.textPrimary}`}
-                      rows={Math.min(5, prompt.split('\n').length || 1)}
-                    />
-                    
-                    <div className="flex items-center gap-1 shrink-0 pb-1 pr-1">
-                      <button className={`p-2.5 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
-                        <Mic size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleGenerate(prompt)}
-                        disabled={!prompt.trim() || viewState === "generating"}
-                        className={`p-2.5 rounded-xl transition-all ${prompt.trim() ? 'bg-violet-500 text-white shadow-md hover:bg-violet-600 hover:scale-105 active:scale-95' : `${colors.textSecondary} opacity-50`}`}
-                      >
-                        {viewState === "generating" ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                      </button>
-                    </div>
-                  </div>
+                <div className="w-full relative z-10">
+                  <UniversalPromptInput 
+                    value={prompt}
+                    onChange={setPrompt}
+                    onSubmit={() => handleGenerate(prompt)}
+                    placeholder="What do you want to build?"
+                    isGenerating={viewState === "generating"}
+                    showAttach={true}
+                    showMic={true}
+                    size="lg"
+                  />
                 </div>
 
                 {/* Glass Grid Suggestions */}

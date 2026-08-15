@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, ChevronDown, Layers, UploadCloud, Paperclip } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
+import { UniversalPromptInput } from "@/components/ui/UniversalPromptInput";
 import { VaultSourcePicker } from "./VaultSourcePicker";
 
 interface FlashcardModalProps {
@@ -118,24 +119,13 @@ export function FlashcardModal({ open, onClose, onGenerate, colors, uploadedFile
             <div className="mt-6">
               <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>What should the topic be?</p>
               <div className="relative">
-                <textarea
+                <UniversalPromptInput
                   value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  rows={showHints ? 6 : 3}
-                  className={`w-full resize-none rounded-xl border ${colors.borderBase} ${colors.bgInput} p-4 text-sm ${colors.textPrimary} placeholder:${colors.textSecondary} outline-none focus:border-[var(--accent)] transition-colors`}
+                  onChange={setTopic}
+                  onSubmit={() => {}}
+                  placeholder={showHints ? `Things to try:\n• ${topicHints.join('\n• ')}` : ""}
+                  size="md"
                 />
-                {showHints && (
-                  <div className="pointer-events-none absolute inset-0 p-4">
-                    <p className={`text-sm ${colors.textSecondary}`}>Things to try</p>
-                    <ul className="mt-1 space-y-0.5 pl-5">
-                      {topicHints.map((hint) => (
-                        <li key={hint} className={`text-sm ${colors.textSecondary} list-disc`}>{hint}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
           </div>

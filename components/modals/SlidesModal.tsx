@@ -4,6 +4,7 @@ import { X, Check, GalleryHorizontalEnd, UploadCloud, Paperclip } from "lucide-r
 import { IconButton } from "@/components/ui/IconButton";
 import { AnimatedChevron } from "@/components/ui/icons";
 import { VaultSourcePicker } from "./VaultSourcePicker";
+import { UniversalPromptInput } from "@/components/ui/UniversalPromptInput";
 
 interface SlidesModalProps {
   open: boolean;
@@ -135,7 +136,13 @@ export function SlidesModal({ open, onClose, onGenerate, colors, uploadedFiles =
 
             <div className="mt-6">
               <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>Describe the slide deck you want to create</p>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder='Add a high-level outline, or guide the audience, style, and focus: "Create a deck for beginners using a bold and playful style with a focus on step-by-step instructions."' className={`w-full resize-none rounded-xl border ${colors.borderBase} ${colors.bgInput} p-4 text-sm ${colors.textPrimary} placeholder:${colors.textSecondary} focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-all`} />
+              <UniversalPromptInput
+                value={description}
+                onChange={setDescription}
+                onSubmit={() => {}}
+                placeholder='Add a high-level outline, or guide the audience, style, and focus: "Create a deck for beginners using a bold and playful style with a focus on step-by-step instructions."'
+                size="md"
+              />
             </div>
           </div>
         ) : (

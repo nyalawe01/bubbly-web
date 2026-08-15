@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, ChevronDown, FileText, UploadCloud, Paperclip } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
+import { UniversalPromptInput } from "@/components/ui/UniversalPromptInput";
 import { VaultSourcePicker } from "./VaultSourcePicker";
 
 interface SummaryModalProps {
@@ -79,24 +80,13 @@ export function SummaryModal({ open, onClose, onGenerate, colors, uploadedFiles 
             <div className="mt-6">
               <p className={`mb-2 text-sm font-medium ${colors.textSecondary}`}>What should the topic be?</p>
               <div className="relative">
-                <textarea
+                <UniversalPromptInput
                   value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  rows={showHints ? 6 : 3}
-                  className={`w-full resize-none rounded-xl border ${colors.borderBase} ${colors.bgInput} p-4 text-sm ${colors.textPrimary} placeholder:${colors.textSecondary} outline-none focus:border-[var(--accent)] transition-colors`}
+                  onChange={setTopic}
+                  onSubmit={() => {}}
+                  placeholder={showHints ? "Things to try:\n• Summarize the key concepts of physics\n• Create a summary of Ancient Egypt history\n• Summarize the main points from the attached document" : ""}
+                  size="md"
                 />
-                {showHints && (
-                  <div className="pointer-events-none absolute inset-0 p-4">
-                    <p className={`text-sm ${colors.textSecondary}`}>Things to try</p>
-                    <ul className="mt-1 space-y-0.5 pl-5">
-                      <li className={`text-sm ${colors.textSecondary} list-disc`}>Summarize the key concepts of physics</li>
-                      <li className={`text-sm ${colors.textSecondary} list-disc`}>Create a summary of Ancient Egypt history</li>
-                      <li className={`text-sm ${colors.textSecondary} list-disc`}>Summarize the main points from the attached document</li>
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
           </div>

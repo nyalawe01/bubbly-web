@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/app/utils/supabase";
 import { Paperclip, Mic, Send, MoreVertical, LayoutDashboard } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { UniversalPromptInput } from "@/components/ui/UniversalPromptInput";
 
 export default function VisionDesignWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
   const { artifactId } = use(params);
@@ -170,49 +171,17 @@ export default function VisionDesignWorkspace({ params }: { params: Promise<{ ar
             </div>
           )}
 
-          <div 
-            className={`
-              relative flex items-end w-full rounded-2xl p-2 transition-all duration-300
-              ${colors.bgCard} shadow-2xl backdrop-blur-xl
-              before:absolute before:inset-0 before:-z-10 before:rounded-2xl before:transition-all before:duration-500
-              ${isFocused ? 'before:bg-gradient-to-r before:from-violet-500 before:via-fuchsia-500 before:to-violet-500 before:p-[2px] before:animate-pulse before:shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'before:bg-neutral-500/20 before:p-[1px]'}
-            `}
-          >
-            {/* Inner Container to block out the gradient background center */}
-            <div className={`w-full flex items-end gap-2 rounded-xl p-2 ${colors.bgCard}`}>
-              <button className={`p-3 shrink-0 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
-                <Paperclip size={20} />
-              </button>
-              
-              <textarea 
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Describe the interface or architecture you want to build..."
-                className={`w-full bg-transparent border-none resize-none max-h-48 min-h-[44px] py-3 px-2 text-sm focus:outline-none placeholder:text-neutral-500 ${colors.textPrimary}`}
-                rows={Math.min(5, input.split('\n').length || 1)}
-              />
-              
-              <div className="flex items-center gap-1 shrink-0 pb-1 pr-1">
-                <button className={`p-2.5 rounded-xl transition-colors ${colors.textSecondary} hover:text-violet-500 hover:bg-violet-500/10`}>
-                  <Mic size={18} />
-                </button>
-                <button 
-                  onClick={handleSend}
-                  disabled={!input.trim() || generating}
-                  className={`p-2.5 rounded-xl transition-all ${input.trim() ? 'bg-violet-500 text-white shadow-md hover:bg-violet-600 hover:scale-105 active:scale-95' : `${colors.textSecondary} opacity-50`}`}
-                >
-                  <Send size={18} />
-                </button>
-              </div>
-            </div>
+          <div className="w-full relative z-10">
+            <UniversalPromptInput 
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
+              placeholder="Describe the interface or architecture you want to build..."
+              isGenerating={generating}
+              showAttach={true}
+              showMic={true}
+              size="lg"
+            />
           </div>
           
           <div className="text-center mt-4">
