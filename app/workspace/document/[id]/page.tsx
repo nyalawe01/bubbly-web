@@ -8,10 +8,12 @@ import { ArrowLeft, Save, Sparkles, Wand2, Presentation, FileText, FileQuestion 
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 export default function DocumentWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { colors } = useTheme();
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,32 +64,32 @@ export default function DocumentWorkspacePage({ params }: { params: Promise<{ id
   if (!asset) return <div className="p-8">Document not found.</div>;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <div className="h-14 bg-white border-b flex items-center px-6 shrink-0 gap-4 justify-between">
+    <div className={`flex flex-col h-screen ${colors.bgApp}`}>
+      <div className={`h-14 border-b flex items-center px-6 shrink-0 gap-4 justify-between ${colors.bgCard} ${colors.borderBase}`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full text-gray-500">
+          <button onClick={() => router.back()} className={`p-2 rounded-full ${colors.textSecondary} ${colors.bgHover}`}>
             <ArrowLeft size={20} />
           </button>
           <input 
             type="text"
-            className="font-semibold text-gray-800 bg-transparent border-none focus:outline-none focus:ring-0 text-lg w-64"
+            className={`font-semibold bg-transparent border-none focus:outline-none focus:ring-0 text-lg w-64 ${colors.textPrimary}`}
             defaultValue={asset.title}
             onBlur={(e) => supabase.from("notebook_assets").update({ title: e.target.value }).eq("id", id)}
           />
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className={`flex items-center gap-2 text-sm ${colors.textSecondary}`}>
             {saving ? "Saving..." : "Saved"} <Save size={14} />
           </div>
           <div className="relative">
             <button 
               onClick={() => setShowGenerateMenu(!showGenerateMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md font-medium text-sm hover:bg-indigo-100"
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors bg-violet-500/10 text-violet-500 hover:bg-violet-500/20`}
             >
               <Sparkles size={16} /> Generate...
             </button>
             {showGenerateMenu && (
-              <div className="absolute top-full mt-2 right-0 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-10">
+              <div className={`absolute top-full mt-2 right-0 w-48 rounded-lg shadow-lg border py-1 z-10 ${colors.bgCard} ${colors.borderBase}`}>
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                   <FileQuestion size={14} className="text-indigo-500" /> Quiz
                 </button>
@@ -99,9 +101,9 @@ export default function DocumentWorkspacePage({ params }: { params: Promise<{ id
                      setShowGenerateMenu(false);
                      alert("Converting to Presentation prototype initiated...");
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${colors.textPrimary} ${colors.bgHover}`}
                 >
-                  <Presentation size={14} className="text-orange-500" /> Presentation
+                  <Presentation size={14} className="text-blue-500" /> Presentation
                 </button>
               </div>
             )}
@@ -109,13 +111,13 @@ export default function DocumentWorkspacePage({ params }: { params: Promise<{ id
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-8 md:p-12 flex justify-center">
-        <div className="w-full max-w-4xl bg-white min-h-[800px] border shadow-sm p-12 focus-within:ring-2 focus-within:ring-indigo-500/20 outline-none rounded-sm">
-          <div className="text-gray-400 text-sm mb-4 border-b pb-2 flex items-center justify-between">
+      <div className={`flex-1 overflow-auto p-12 ${colors.bgApp}`}>
+        <div className={`max-w-4xl mx-auto border rounded-lg shadow-sm min-h-[800px] p-12 ${colors.bgCard} ${colors.borderBase}`}>
+          <div className={`text-gray-400 text-sm mb-4 border-b pb-2 flex items-center justify-between ${colors.borderBase}`}>
             <span>Editor (TipTap)</span>
             <span className="flex items-center gap-1"><Wand2 size={14}/> Type '/' for AI commands</span>
           </div>
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} className={`${colors.textPrimary}`} />
         </div>
       </div>
     </div>

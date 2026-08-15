@@ -1232,7 +1232,6 @@ export default function Workspace() {
   }}
   onOpenClassrooms={() => router.push('/classrooms')}
   onCreateWorkspace={createBlankWorkspace}
-  onOpenPlugins={() => router.push('/settings/plugins')}
   colors={colors}
   logoSrc={logoSrc}
   theme={theme}

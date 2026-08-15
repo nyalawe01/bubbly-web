@@ -58,7 +58,6 @@ interface SidebarProps {
   onOpenNewTask: () => void;
   onOpenClassrooms?: () => void;
   onCreateWorkspace?: (type: 'code' | 'diagram') => void;
-  onOpenPlugins?: () => void;
   onSignOut?: () => void; // optional — falls back to a real Supabase sign-out if the page doesn't wire one
   colors: any;
   logoSrc: string;
@@ -97,7 +96,6 @@ export function Sidebar({
   onOpenNewTask,
   onOpenClassrooms,
   onCreateWorkspace,
-  onOpenPlugins,
   onSignOut,
   colors,
   logoSrc,
@@ -149,7 +147,6 @@ export function Sidebar({
     { key: "classrooms", label: "Classrooms", icon: Users, onClick: onOpenClassrooms },
     { key: "code", label: "Code Sandbox", icon: Code, onClick: () => onCreateWorkspace?.("code") },
     { key: "diagram", label: "Visual Diagram", icon: PenTool, onClick: () => onCreateWorkspace?.("diagram") },
-    { key: "plugins", label: "Plugins", icon: Plug, onClick: onOpenPlugins },
   ];
 
   return (

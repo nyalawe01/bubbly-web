@@ -5,10 +5,12 @@ import { ArrowLeft, Save, MousePointer2, Plus, Download, Sparkles } from "lucide
 import { useRouter } from "next/navigation";
 import ReactFlow, { Background, Controls, MiniMap, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge } from "reactflow";
 import "reactflow/dist/style.css";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 export default function DiagramWorkspace({ params }: { params: Promise<{ artifactId: string }> }) {
   const { artifactId } = use(params);
   const router = useRouter();
+  const { colors, theme } = useTheme();
   
   const [nodes, setNodes] = useState<Node[]>([
     { id: '1', type: 'input', data: { label: 'Client' }, position: { x: 250, y: 100 } },
@@ -62,44 +64,44 @@ export default function DiagramWorkspace({ params }: { params: Promise<{ artifac
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 font-sans">
-      <div className="h-14 border-b bg-white flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
+    <div className={`flex flex-col h-screen font-sans ${colors.bgApp}`}>
+      <div className={`h-14 border-b flex items-center justify-between px-4 shrink-0 shadow-sm z-10 ${colors.bgCard} ${colors.borderBase}`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-900">
+          <button onClick={() => router.back()} className={`hover:opacity-70 ${colors.textSecondary}`}>
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="font-semibold text-gray-900 leading-tight">Flowchart Diagram</h1>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Flowchart • Editing</span>
+            <h1 className={`font-semibold leading-tight ${colors.textPrimary}`}>Flowchart Diagram</h1>
+            <span className={`text-[10px] uppercase tracking-wider font-bold ${colors.textSecondary}`}>Flowchart • Editing</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 mr-4">
+          <div className={`flex items-center rounded-lg p-1 mr-4 ${colors.bgInput}`}>
             <input 
               type="text" 
               placeholder="Generate with AI..." 
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
-              className="bg-transparent border-none text-sm px-3 py-1 focus:outline-none w-64"
+              className={`bg-transparent border-none text-sm px-3 py-1 focus:outline-none w-64 ${colors.textPrimary}`}
             />
             <button 
               onClick={generateDiagram}
               disabled={loading || !prompt.trim()}
-              className="bg-white p-1.5 rounded shadow-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50 transition-colors"
+              className={`p-1.5 rounded shadow-sm disabled:opacity-50 transition-colors ${colors.bgCard} ${colors.textPrimary} hover:text-violet-500`}
             >
-              <Sparkles size={16} />
+              <Sparkles size={16} className="text-violet-500" />
             </button>
           </div>
 
-          <button className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded" title="Download PNG"><Download size={18} /></button>
-          <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 ml-2">
+          <button className={`p-2 rounded ${colors.textSecondary} ${colors.bgHover}`} title="Download PNG"><Download size={18} /></button>
+          <button className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ml-2 transition-all ${colors.btnPrimary}`}>
             <Save size={16} /> Save
           </button>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
-        <div className="flex-1 relative bg-white">
+        <div className={`flex-1 relative ${colors.bgApp}`}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -108,9 +110,9 @@ export default function DiagramWorkspace({ params }: { params: Promise<{ artifac
             onConnect={onConnect}
             fitView
           >
-            <Background color="#ccc" gap={16} />
+            <Background gap={16} size={1} color={theme === 'dark' ? '#333' : '#ddd'} />
             <Controls />
-            <MiniMap nodeStrokeColor={() => '#6366f1'} />
+            <MiniMap />
           </ReactFlow>
         </div>
       </div>

@@ -31,9 +31,9 @@ export const THEMES: Record<ThemeName, Theme> = {
   dark: {
     id: "dark", name: "Dark", mood: "Deep space focus.",
     colors: {
-      bg: "#000000", surface: "#09090B", surface2: "#18181B", border: "#27272A",
-      text: "#FAFAFA", text2: "#A1A1AA",
-      accent: "#FFFFFF", accent2: "#E4E4E7", accentSoft: "#27272A", accentInk: "#000000",
+      bg: "#0F111A", surface: "#1A1D27", surface2: "#2A2D37", border: "#2A2D37",
+      text: "#E2E8F0", text2: "#94A3B8",
+      accent: "#8B5CF6", accent2: "#3B82F6", accentSoft: "#1E2235", accentInk: "#FFFFFF",
     },
     typography: { displayFont: "sans", bodyFont: "sans", displayWeight: 600, tracking: "-0.02em" },
     shape: { radius: "12px", radiusSm: "8px" },
