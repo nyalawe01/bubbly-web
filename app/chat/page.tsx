@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { createBrowserClient } from '@supabase/ssr';
 import Head from "next/head";
 import { 
@@ -84,6 +85,7 @@ function mapChatRow(row: any) {
 }
 
 export default function Workspace() {
+  const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -1148,6 +1150,28 @@ export default function Workspace() {
     </div>
   );
   
+  const createBlankWorkspace = async (type: 'code' | 'diagram') => {
+    try {
+      const { data, error } = await supabase
+        .from('notebook_assets')
+        .insert({
+          user_id: user.id,
+          type: type,
+          title: `New ${type === 'code' ? 'Code Sandbox' : 'Diagram'}`,
+          status: 'ready',
+          content: {}
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        router.push(`/workspace/${type}/${data.id}`);
+      }
+    } catch (e: any) {
+      alert("Failed to create workspace: " + e.message);
+    }
+  };
   if (!isAuthenticated || showAuthScreen) return (
     <div className={`h-dvh w-full ${colors.bgApp} flex items-center justify-center transition-colors duration-300`}>
       <Head><title>Redirecting - bubbly</title></Head>
@@ -1206,6 +1230,9 @@ export default function Workspace() {
     if (window.innerWidth < 768) setIsMobileMenuOpen(false);
     window.location.href = "/vault";
   }}
+  onOpenClassrooms={() => router.push('/classrooms')}
+  onCreateWorkspace={createBlankWorkspace}
+  onOpenPlugins={() => router.push('/settings/plugins')}
   colors={colors}
   logoSrc={logoSrc}
   theme={theme}

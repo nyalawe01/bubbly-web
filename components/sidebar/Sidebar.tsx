@@ -15,6 +15,10 @@ import {
   GraduationCap,
   X,
   ChevronDown,
+  Users,
+  Code,
+  PenTool,
+  Plug
 } from "lucide-react";
 import { Notebooks } from "./Notebooks";
 import { Recents } from "./Recents";
@@ -52,6 +56,9 @@ interface SidebarProps {
   onOpenExam: () => void;
   onNavigateToVault: () => void;
   onOpenNewTask: () => void;
+  onOpenClassrooms?: () => void;
+  onCreateWorkspace?: (type: 'code' | 'diagram') => void;
+  onOpenPlugins?: () => void;
   onSignOut?: () => void; // optional — falls back to a real Supabase sign-out if the page doesn't wire one
   colors: any;
   logoSrc: string;
@@ -88,6 +95,9 @@ export function Sidebar({
   onOpenExam,
   onNavigateToVault,
   onOpenNewTask,
+  onOpenClassrooms,
+  onCreateWorkspace,
+  onOpenPlugins,
   onSignOut,
   colors,
   logoSrc,
@@ -133,6 +143,13 @@ export function Sidebar({
     { key: "slides", label: t("nav.slides"), icon: MonitorPlay, onClick: onOpenSlides },
     { key: "exam", label: t("nav.examPrep"), icon: GraduationCap, onClick: onOpenExam },
     { key: "vault", label: t("nav.vault"), icon: FolderOpen, onClick: onNavigateToVault },
+  ];
+
+  const workspaceItems = [
+    { key: "classrooms", label: "Classrooms", icon: Users, onClick: onOpenClassrooms },
+    { key: "code", label: "Code Sandbox", icon: Code, onClick: () => onCreateWorkspace?.("code") },
+    { key: "diagram", label: "Visual Diagram", icon: PenTool, onClick: () => onCreateWorkspace?.("diagram") },
+    { key: "plugins", label: "Plugins", icon: Plug, onClick: onOpenPlugins },
   ];
 
   return (
@@ -193,6 +210,33 @@ export function Sidebar({
       <div className="px-2 flex-1 overflow-y-auto hide-scrollbar space-y-3 pb-2">
         <div className="space-y-0.5">
           {toolItems.map(({ key, label, icon: Icon, onClick }) => {
+            const isActive = activeView === key;
+            return (
+              <button
+                key={key}
+                onClick={onClick}
+                className={`nav-row w-full flex items-center gap-2.5 rounded-lg transition-colors ${
+                  showContent ? "px-2.5 py-2.5 md:py-1.5" : "justify-center py-2"
+                } ${isActive ? colors.bgActive : `${colors.textSecondary} ${colors.bgHover}`}`}
+              >
+                <Icon size={17} className="flex-shrink-0 md:w-4 md:h-4" color={darkWhite ? "#ffffff" : undefined} />
+                {showContent && (
+                  <span className="text-[14px] md:text-[13px] font-medium truncate" style={darkWhite ? { color: "#fff" } : undefined}>
+                    {label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-0.5 mt-2">
+          {showContent && (
+            <div className={`text-[11px] font-semibold ${colors.textSecondary} uppercase tracking-wider mb-1.5 px-1`}>
+              Workspaces & Apps
+            </div>
+          )}
+          {workspaceItems.map(({ key, label, icon: Icon, onClick }) => {
             const isActive = activeView === key;
             return (
               <button
