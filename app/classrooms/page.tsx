@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/app/utils/supabase";
-import { Users, Plus, BookOpen, LogIn } from "lucide-react";
+import { Users, Plus, BookOpen, LogIn, ChevronRight, LayoutDashboard, Clock, FileCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NewClassroomModal } from "@/components/modals/NewClassroomModal";
@@ -30,72 +30,108 @@ export default function ClassroomsDashboard() {
   }, []);
 
   return (
-    <div className={`p-8 w-full min-h-screen ${colors.bgApp}`}>
-      <div className="max-w-5xl mx-auto relative">
-        <div className="flex items-center justify-between mb-8">
+    <div className={`p-8 w-full min-h-screen ${colors.bgApp} font-sans`}>
+      <div className="max-w-6xl mx-auto relative">
+        
+        {/* Breadcrumb Header */}
+        <div className={`flex items-center gap-2 text-sm font-medium mb-6 ${colors.textSecondary}`}>
+          <LayoutDashboard size={16} />
+          <span>Dashboard</span>
+          <ChevronRight size={14} className="opacity-50" />
+          <span className={`text-violet-500`}>Classrooms</span>
+        </div>
+
+        <div className="flex items-center justify-between mb-10">
           <div>
-            <h1 className={`text-2xl font-bold flex items-center gap-2 ${colors.textPrimary}`}>
-              <Users className="text-violet-500" /> Classrooms
+            <h1 className={`text-3xl font-bold tracking-tight ${colors.textPrimary}`}>
+              Academic Workspace
             </h1>
-            <p className={`mt-1 ${colors.textSecondary}`}>Shared learning environments for your courses.</p>
+            <p className={`mt-1 text-sm ${colors.textSecondary}`}>Manage your courses, assignments, and learning progress.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className={`flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium ${colors.bgCard} ${colors.textPrimary} ${colors.borderBase} ${colors.bgHover}`}>
+            <button className={`flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium transition-all ${colors.bgCard} ${colors.textPrimary} ${colors.borderBase} hover:border-violet-500/50`}>
               <LogIn size={16} /> Join Class
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-premium transition-all ${colors.btnPrimary}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-premium transition-all hover:scale-105 active:scale-95 ${colors.btnPrimary}`}
             >
               <Plus size={16} /> Create Class
             </button>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-        {classrooms.map(membership => {
-          const cls = membership.classrooms;
-          return (
-            <Link key={cls.id} href={`/classrooms/${cls.id}`}>
-              <div className={`border p-6 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer h-full flex flex-col justify-between group ${colors.bgCard} ${colors.borderBase} hover:border-violet-500/50`}>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold tracking-wider uppercase text-violet-500 bg-violet-500/10 px-2 py-1 rounded">
-                      {cls.course_code || 'COURSE'}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${membership.role === 'teacher' ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-500/10 text-neutral-400'}`}>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {classrooms.map(membership => {
+            const cls = membership.classrooms;
+            const progress = Math.floor(Math.random() * 60) + 20; // Mock progress
+
+            return (
+              <Link key={cls.id} href={`/classrooms/${cls.id}`}>
+                <div className={`border p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group relative overflow-hidden ${colors.bgCard} ${colors.borderBase} hover:border-violet-500/50`}>
+                  
+                  {/* Status Ring / Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold tracking-wider uppercase text-violet-500 bg-violet-500/10 px-2 py-1 rounded w-fit mb-2">
+                        {cls.course_code || 'COURSE'}
+                      </span>
+                      <h3 className={`text-lg font-bold leading-tight group-hover:text-violet-500 transition-colors ${colors.textPrimary}`}>{cls.name}</h3>
+                    </div>
+                    {/* Mock Status Ring representing active tasks */}
+                    <div className="w-10 h-10 rounded-full border-4 border-violet-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-violet-500">3</span>
+                    </div>
+                  </div>
+
+                  <p className={`text-sm line-clamp-2 mb-6 flex-1 ${colors.textSecondary}`}>{cls.description}</p>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between text-xs font-medium mb-2">
+                      <span className={`${colors.textSecondary}`}>Course Progress</span>
+                      <span className={`${colors.textPrimary}`}>{progress}%</span>
+                    </div>
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden ${colors.bgInput}`}>
+                      <div className="h-full bg-violet-500 rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className={`flex items-center justify-between pt-4 border-t ${colors.borderBase}`}>
+                    <div className={`flex items-center gap-3 text-xs font-medium ${colors.textSecondary}`}>
+                      <span className="flex items-center gap-1 hover:text-violet-500 transition-colors"><BookOpen size={14} /> Materials</span>
+                      <span className="flex items-center gap-1 hover:text-violet-500 transition-colors"><FileCheck size={14} /> Tasks</span>
+                    </div>
+                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${membership.role === 'teacher' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                       {membership.role}
                     </span>
                   </div>
-                  <h3 className={`text-xl font-bold mb-2 ${colors.textPrimary}`}>{cls.name}</h3>
-                  <p className={`text-sm line-clamp-2 ${colors.textSecondary}`}>{cls.description}</p>
                 </div>
-                <div className={`mt-6 flex items-center gap-4 text-sm border-t pt-4 ${colors.borderBase} ${colors.textSecondary}`}>
-                  <div className="flex items-center gap-1"><BookOpen size={14} /> Course Notebook</div>
-                </div>
+              </Link>
+            );
+          })}
+          
+          {classrooms.length === 0 && (
+            <div className={`md:col-span-3 text-center py-20 rounded-2xl border border-dashed flex flex-col items-center ${colors.bgInput} ${colors.borderBase} ${colors.textSecondary}`}>
+              <div className="w-16 h-16 rounded-full bg-violet-500/10 flex items-center justify-center mb-4">
+                <Users size={32} className="text-violet-500" />
               </div>
-            </Link>
-          );
-        })}
-        
-        {classrooms.length === 0 && (
-          <div className={`md:col-span-2 text-center py-16 rounded-xl border border-dashed flex flex-col items-center ${colors.bgInput} ${colors.borderBase} ${colors.textSecondary}`}>
-            <Users size={32} className="opacity-30 mb-4" />
-            <p>You aren't in any classrooms yet.</p>
-            <p className="text-sm mt-1 opacity-70">Create one to start teaching or ask your teacher for an invite code.</p>
-          </div>
-        )}
-      </div>
+              <h3 className={`text-xl font-bold mb-2 ${colors.textPrimary}`}>No Classrooms Found</h3>
+              <p className="text-sm max-w-md">You aren't enrolled in any active learning environments. Create a new class to start teaching, or join an existing one using an invite code.</p>
+            </div>
+          )}
+        </div>
 
-      {isModalOpen && (
-        <NewClassroomModal
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={(id) => {
-            setIsModalOpen(false);
-            router.push(`/classrooms/${id}`);
-          }}
-        />
-      )}
+        {isModalOpen && (
+          <NewClassroomModal
+            onClose={() => setIsModalOpen(false)}
+            onSuccess={(id) => {
+              setIsModalOpen(false);
+              router.push(`/classrooms/${id}`);
+            }}
+          />
+        )}
       </div>
     </div>
   );
